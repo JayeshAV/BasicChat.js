@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { Link, Links, useNavigate } from "react-router-dom";
 import { auth } from '../firebase.js';
 import { getAuth, signInWithEmailAndPassword, signInWithPopup, GoogleAuthProvider } from "firebase/auth";
 import { FacebookAuthProvider } from "firebase/auth";
@@ -23,8 +23,13 @@ const Login = () => {
             await signInWithEmailAndPassword(auth, email, password)
                 .then(() => {
                     setLoading(false); 
+                    // const loginsuccess = window.confirm("You Are Successfuly logged in..")
                     toast.success("Login successful!");
-                    navigate("/group");
+                    
+                     setTimeout(() => {
+                      navigate("/group");
+                     }, 2000);
+                    
                 })
                 .catch((err) => {
                     setLoading(false); 
@@ -48,7 +53,9 @@ const Login = () => {
                 .then(() => {
                     setLoading(false);
                     toast.success("Google login successful!");
-                    navigate("/group");
+                 
+                      navigate("/group");
+                    
                 })
                 .catch((err) => {
                     setLoading(false); 
@@ -63,28 +70,28 @@ const Login = () => {
         }
     };
 
-    const handleFacebook = async (e) => {
-        e.preventDefault();
-        setLoading(true); 
-        const provider = new FacebookAuthProvider();
-        try {
-            await signInWithPopup(auth, provider)
-                .then(() => {
-                    setLoading(false); 
-                    toast.success("Facebook login successful!");
-                    navigate("/group");
-                })
-                .catch((err) => {
-                    setLoading(false); 
-                    console.log(err);
-                });
-            console.log(email, password);
-        } catch (error) {
-            setLoading(false); 
-            toast.error(error.message);
-            console.log(error.message);
-        }
-    };
+    // const handleFacebook = async (e) => {
+    //     e.preventDefault();
+    //     setLoading(true); 
+    //     const provider = new FacebookAuthProvider();
+    //     try {
+    //         await signInWithPopup(auth, provider)
+    //             .then(() => {
+    //                 setLoading(false); 
+    //                 toast.success("Facebook login successful!");
+    //                 navigate("/group");
+    //             })
+    //             .catch((err) => {
+    //                 setLoading(false); 
+    //                 console.log(err);
+    //             });
+    //         console.log(email, password);
+    //     } catch (error) {
+    //         setLoading(false); 
+    //         toast.error(error.message);
+    //         console.log(error.message);
+    //     }
+    // };
 
     const clearInputFields = () => {
         setEmail("");
@@ -152,7 +159,7 @@ const Login = () => {
       </button>
     </div>
   
-          <button type="submit" className="w-full bg-blue-500 hover:bg-blue-600 text-white py-3 rounded-lg transition duration-200 focus:outline-none focus:ring-2 focus:ring-blue-400">
+          <button type="submit" className="w-full bg-blue-500 hover:bg-blue-600 text-white py-3 hover:scale-[0.98] rounded-lg transition duration-200 focus:outline-none focus:ring-2 focus:ring-blue-400">
             Sign In
           </button>
           </form>
@@ -178,7 +185,7 @@ const Login = () => {
             </div>
           </button>
   
-          <button onClick={handleFacebook} type="button" className="w-full bg-blue-800/40 text-blue-100 py-3 px-4 rounded-lg flex items-center transition duration-200 hover:bg-blue-700/40 border border-blue-700/30">
+          {/* <button onClick={handleFacebook} type="button" className="w-full bg-blue-800/40 text-blue-100 py-3 px-4 rounded-lg flex items-center transition duration-200 hover:bg-blue-700/40 border border-blue-700/30">
             <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-3 text-blue-300" viewBox="0 0 24 24" fill="currentColor">
               <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z" />
             </svg>
@@ -188,9 +195,11 @@ const Login = () => {
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5l7 7-7 7" />
               </svg>
             </div>
-          </button>
+          </button> */}
         </div>
       </div>
+      <Link to={"/signup"}>
+      <h1 className=" text-center pt-5 text-blue-300 opacity-80">If You are new user ? Please Register</h1></Link>
     </div>
   </div>
   
