@@ -12,7 +12,6 @@ import {
   getDocs,
   updateDoc,
   where,
-  getDoc,
 } from "firebase/firestore";
 import { FaSignOutAlt, FaTrashAlt, FaArrowLeft } from "react-icons/fa";
 import { useNavigate } from "react-router-dom";
@@ -27,8 +26,10 @@ const ChatRoom = () => {
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
   const messagesEndRef = useRef(null);
   const navigate = useNavigate();
-  const privateChatCollectionName = "privateChats";
-  const [privateMessage, setPrivateMessage] = useState([]);
+  const privateChatCollectionName = "privateChats"; 
+  const [privateMessage,setPrivateMessage]=useState([])
+
+
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -46,28 +47,28 @@ const ChatRoom = () => {
       alert("Please select a user to chat with first");
       return;
     }
-
+  
     try {
       console.log("Current auth user:", auth.currentUser);
       console.log("Selected user for messaging:", selectedUser);
-
+  
       const currentUserData = users.find(
         (user) => user.email === auth.currentUser?.email
       );
       console.log("Found current user data:", currentUserData);
-
+  
       const displayName =
         currentUserData?.displayName ||
         auth.currentUser?.displayName ||
         auth.currentUser?.email?.split("@")[0] ||
         "Unknown User";
-
+  
       const senderId = auth.currentUser.uid;
-      const recipientUid = selectedUser.uid;
-      console.log("selected user uid", selectedUser.uid);
+      const recipientUid = selectedUser.uid ;
+      console.log("selected user uid",selectedUser.uid)
       console.log("Sender ID:", senderId);
       console.log("Recipient ID:", recipientUid);
-
+  
       if (!senderId) {
         console.error("Current user has no valid UID");
         alert(
@@ -75,7 +76,7 @@ const ChatRoom = () => {
         );
         return;
       }
-
+  
       if (!recipientUid) {
         console.error("Selected recipient has no valid UID:", selectedUser);
         alert(
@@ -83,32 +84,34 @@ const ChatRoom = () => {
         );
         return;
       }
-
+  
       const participants = [senderId, recipientUid];
-      const chatId = participants.sort().join("_");
+      const chatId = participants.sort().join("_"); 
 
-      const messageData = {
-        text: message,
-        createdAt: serverTimestamp(),
-        uid: senderId,
-        email: auth.currentUser.email,
-        displayName: displayName,
-        isDeleted: false,
-        recipientUid: recipientUid,
-        recipientEmail: selectedUser.email,
-        participants: participants,
-        chatId: chatId,
-      };
-
+const messageData = {
+text: message,
+createdAt: serverTimestamp(),
+uid: senderId,
+email: auth.currentUser.email,
+displayName: displayName,
+isDeleted: false,
+recipientUid: recipientUid,
+recipientEmail: selectedUser.email,
+participants: participants,
+chatId: chatId, 
+};
+ 
+      
+  
       console.log("Attempting to send message with data:", messageData);
-
+  
       const docRef = await addDoc(
-        collection(db, privateChatCollectionName),
+        collection(db, privateChatCollectionName), // check collection name here
         messageData
       );
-
+      
       console.log("Message sent successfully with ID:", docRef.id);
-
+  
       setMessage("");
     } catch (error) {
       console.error("Error sending message:", error);
@@ -118,130 +121,116 @@ const ChatRoom = () => {
 
   useEffect(() => {
     if (!auth.currentUser || !selectedUser || !selectedUser.uid) return;
-
+  
     const currentUserId = auth.currentUser.uid;
     const otherUserId = selectedUser.uid;
     const chatId = [currentUserId, otherUserId].sort().join("_");
-
+  
     const messagesQuery = query(
       collection(db, privateChatCollectionName),
       where("chatId", "==", chatId),
       orderBy("createdAt", "asc")
     );
-    console.log("useffect render when chat id is ", chatId);
+    console.log("useffect render when chat id is ",chatId)
 
-    const unsubscribe = onSnapshot(
-      messagesQuery,
-      (snapshot) => {
-        if (snapshot.empty) {
-          console.log("No messages found for this chat.");
-        }
-        const fetchedMessages = [];
-        snapshot.forEach((doc) => {
-          fetchedMessages.push({ ...doc.data(), id: doc.uid });
-        });
-        setMessages(fetchedMessages);
-      },
-      (error) => {
-        console.error("Error fetching messages: ", error);
+    const unsubscribe = onSnapshot(messagesQuery, (snapshot) => {
+      if (snapshot.empty) {
+        console.log("No messages found for this chat.");
       }
-    );
-    console.log(chatId);
-    return () => unsubscribe();
-  }, [auth, selectedUser]);
-
-  const debugMessages = async () => {
-    if (!auth.currentUser || !selectedUser) {
-      console.log("Can't debug: No current user or selected user");
-      return;
-    }
-
-    try {
-      const currentUserId = auth.currentUser.uid;
-      const otherUserId = selectedUser.uid;
-
-      console.log("===== MESSAGE DEBUGGING =====");
-      console.log("Current user ID:", currentUserId);
-      console.log("Selected user ID:", otherUserId);
-
-      const allPrivateMessages = await getDocs(
-        collection(db, privateChatCollectionName)
-      );
-      console.log("Total messages in collection:", allPrivateMessages.size);
-
-      setPrivateMessage(allPrivateMessages);
-
-      allPrivateMessages.forEach((doc) => {
-        const msgData = doc.data();
-        console.log("Message:", doc.id, msgData);
-
-        const participants = msgData.participants || [];
-        console.log("- Participants:", participants);
-        console.log(
-          "- Contains current user:",
-          participants.includes(currentUserId)
-        );
-        console.log(
-          "- Contains selected user:",
-          participants.includes(otherUserId)
-        );
-
-        console.log("- Sender UID:", msgData.uid);
-        console.log("- Recipient UID:", msgData.recipientUid);
-        console.log(
-          "- Direct match:",
-          (msgData.uid === currentUserId &&
-            msgData.recipientUid === otherUserId) ||
-            (msgData.uid === otherUserId &&
-              msgData.recipientUid === currentUserId)
-        );
+      const fetchedMessages = [];
+      snapshot.forEach((doc) => {
+        fetchedMessages.push({ ...doc.data(), id: doc.uid });
       });
+      setMessages(fetchedMessages);
+    }, (error) => {
+      console.error("Error fetching messages: ", error);
+    });
+    console.log(chatId)
+    return () => unsubscribe();
+  }, [auth, selectedUser]); 
+  
+  
 
-      console.log("===== END DEBUGGING =====");
+  
+const debugMessages = async () => {
+  if (!auth.currentUser || !selectedUser) {
+    console.log("Can't debug: No current user or selected user");
+    return;
+  }
+
+  try {
+    const currentUserId = auth.currentUser.uid;
+    const otherUserId = selectedUser.uid;
+    
+    console.log("===== MESSAGE DEBUGGING =====");
+    console.log("Current user ID:", currentUserId);
+    console.log("Selected user ID:", otherUserId);
+    
+    const allPrivateMessages = await getDocs(collection(db, privateChatCollectionName));
+    console.log("Total messages in collection:", allPrivateMessages.size);
+
+    setPrivateMessage(allPrivateMessages)
+    
+    allPrivateMessages.forEach((doc) => {
+      
+      const msgData = doc.data();
+      console.log("Message:", doc.id, msgData);
+      
+  
+      const participants = msgData.participants || [];
+      console.log("- Participants:", participants);
+      console.log("- Contains current user:", participants.includes(currentUserId));
+      console.log("- Contains selected user:", participants.includes(otherUserId));
+      
+      
+      console.log("- Sender UID:", msgData.uid);
+      console.log("- Recipient UID:", msgData.recipientUid);
+      console.log("- Direct match:", 
+        (msgData.uid === currentUserId && msgData.recipientUid === otherUserId) ||
+        (msgData.uid === otherUserId && msgData.recipientUid === currentUserId)
+      );
+    });
+    
+    console.log("===== END DEBUGGING =====");
+  } catch (error) {
+    console.error("Debug error:", error);
+  }
+};
+
+useEffect(() => {
+  const fetchUsers = async () => {
+    try {
+      const userSnapshot = await getDocs(collection(db, "users"));
+      const userList = [];
+      userSnapshot.forEach((doc) => {
+        const userData = doc.data();
+        userList.push({
+          id: doc.id,
+          uid: userData.uid,
+          ...userData,
+        });
+      });
+      console.log("Fetched users:", userList);
+      console.log(userSnapshot)
+      setUsers(userList);
     } catch (error) {
-      console.error("Debug error:", error);
+      console.error("Error fetching users:", error);
     }
   };
+  fetchUsers();
+}, []);
 
-  useEffect(() => {
-    const fetchUsers = async () => {
-      try {
-        const userSnapshot = await getDocs(collection(db, "users"));
-        const userList = [];
-        userSnapshot.forEach((doc) => {
-          const userData = doc.data();
-          userList.push({
-            id: doc.id,
-            uid: userData.uid,
-            ...userData,
-          });
-        });
-        console.log("Fetched users:", userList);
-        console.log(userSnapshot);
-        setUsers(userList);
-      } catch (error) {
-        console.error("Error fetching users:", error);
-      }
-    };
-    fetchUsers();
-  }, []);
 
-  const deleteMessage = async (chatId) => {
+  const deleteMessage = async (id) => {
     try {
-      const chatRef = doc(db, 'privateChats', chatId);
-      const docSnapshot = await getDoc(chatRef);
-      
-      if (!docSnapshot.exists()) {
-        console.log("Document not found!");
-        return; 
-      }
-  
-      const confirmDelete = window.confirm("Are you sure you want to delete this message?");
+      const msgRef = doc(db, privateChatCollectionName, id);
+      const confirmDelete = window.confirm(
+        "Are you sure you want to delete this message?"
+      );
       if (confirmDelete) {
-        await updateDoc(chatRef, {
-          isDeleted: true,  // `isDeleted` को true पर सेट करें
+        await updateDoc(msgRef, {
+          isDeleted: true,
         });
-        console.log("Chat marked as deleted!");
       }
     } catch (error) {
       console.error("Error deleting message:", error);
@@ -258,14 +247,14 @@ const ChatRoom = () => {
 
   const handleUserSelect = (user) => {
     if (user.uid === auth.currentUser?.uid) {
-      return;
+      return; 
     }
-
+    
     const selectedUserWithUid = {
       ...user,
-      uid: user.uid,
+      uid: user.uid, 
     };
-
+    
     console.log("Selected user with uid:", selectedUserWithUid);
     setSelectedUser(selectedUserWithUid);
     setSearchQuery("");
@@ -319,17 +308,14 @@ const ChatRoom = () => {
   const filterUsers = users.filter(
     (user) =>
       user.displayName?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      user.email
-        ?.split("@")[0]
-        .toLowerCase()
-        .includes(searchQuery.toLowerCase())
+      user.email?.split("@")[0].toLowerCase().includes(searchQuery.toLowerCase())
   );
-  console.log(filterUsers);
+  console.log(filterUsers)
 
   return (
     <>
       <div className="flex h-screen">
-        <div className="w-full md:w-100 bg-[#1A2436] border-r border-gray-700 overflow-y-auto sm:hidden hidden xl:block">
+        <div className="w-full md:w-64 bg-[#1A2436] border-r border-gray-700 overflow-y-auto sm:hidden hidden xl:block">
           <div className="bg-[#1a2436] p-4 shadow-md flex items-center justify-between sticky top-0 z-10">
             <h2 className="text-xl text-white font-bold">Users</h2>
             <button
@@ -361,33 +347,36 @@ const ChatRoom = () => {
                 Search for users to start chatting
               </div>
             )}
-            
-            {searchQuery ? (filterUsers.filter((user) => user.uid !== auth.currentUser?.uid)
-              .map((user) => (
-                <div
-                  key={user.uid}
-                  className={`mb-2 cursor-pointer ${
-                    selectedUser?.uid === user.uid
-                      ? "border-l-4 border-blue-500 bg-gray-700"
-                      : ""
-                  }`}
-                  onClick={() => handleUserSelect(user)}
-                >
-                  <h1 className="text-white text-xl bg-gray-700 py-2 rounded-xl m-1 ps-2 flex items-center">
-                    <span className="p-2 rounded-full px-4 bg-blue-500 me-4">
-                      {(
-                        user.displayName?.charAt(0) ||
-                        user.email?.charAt(0) ||
-                        "U"
-                      ).toUpperCase()}
-                    </span>
-                    {user.displayName ||
-                      user.email?.split("@")[0] ||
-                      "Unknown User"}
-                  </h1>
-                </div>
-              ))):("")}
-
+            {
+             
+                 filterUsers
+                    .filter((user) => user.uid !== auth.currentUser?.uid)
+                    .map((user) => (
+                      <div
+                        key={user.uid}
+                        className={`mb-2 cursor-pointer ${
+                          selectedUser?.uid === user.uid
+                            ? "border-l-4 border-blue-500"
+                            : ""
+                        }`}
+                        onClick={() => handleUserSelect(user)}
+                      >
+                        <h1 className="text-white text-xl bg-gray-700 py-2 rounded-xl m-1 ps-2 flex items-center">
+                          <span className="p-2 rounded-full px-4 bg-blue-500 me-4">
+                            {(
+                              user.displayName?.charAt(0) ||
+                              user.email?.charAt(0) ||
+                              "U"
+                            ).toUpperCase()}
+                          </span>
+                          {user.displayName ||
+                            user.email?.split("@")[0] ||
+                            "Unknown User"}
+                        </h1>
+                      </div>
+                    ))
+               
+                  }
           </div>
         </div>
         <div className="flex-1 flex flex-col bg-[#131c2e] text-white">
@@ -421,80 +410,70 @@ const ChatRoom = () => {
                 </>
               )}
             </h2>
-            <div className="flex">
-              <h1 className="pe-3">{currentUserDetails?.displayName}</h1>
             <button
               onClick={handleLogout}
               className="rounded-full text-white hover:text-red-400"
             >
               <FaSignOutAlt className="h-5 w-5" />
             </button>
-            </div>
           </div>
 
+          
           <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-[#0f172a] text-white">
-           {messages.length===0 && <div className="mb-20 flex flex-col items-center">
-  <div className="relative w-24 h-24 rounded-full flex items-center justify-center  shadow-inner opacity-10 bg-gradient-to-br from-blue-400 to-blue-600 shadow-md">
-    <p className="text-white text-6xl font-semibold">{selectedUser?.displayName[0]}</p>
-  </div>
-  <p className="mt-3 text-center text-xl font-semibold text-gray-300 tracking-wide">{selectedUser?.displayName.toUpperCase()}</p>
-</div>}
-            {messages.map((msg) => {
-              const senderName = getSenderDisplayName(msg);
-              const initial = senderName?.charAt(0).toUpperCase();
-              const isCurrentUser = msg.uid === auth.currentUser?.uid;
+            
+          {messages.map((msg) => {
+          const senderName = getSenderDisplayName(msg); 
+          const initial = senderName?.charAt(0).toUpperCase(); 
+           const isCurrentUser = msg.uid === auth.currentUser?.uid;
 
-              return (
-                <div
-                  key={msg.id}
-                  className={`flex items-start gap-2 mb-3 ${
-                    isCurrentUser ? "justify-end" : "justify-start"
-                  }`}
-                >
-                  {!isCurrentUser && (
-                    <div className="w-10 h-10 rounded-full bg-white text-black font-bold flex items-center justify-center">
-                      {initial}
-                    </div>
-                  )}
+  return (
+    <div
+      key={msg.id}
+      className={`flex items-start gap-2 mb-3 ${isCurrentUser ? "justify-end" : "justify-start"}`}
+    >
+
+      {!isCurrentUser && (
+        <div className="w-10 h-10 rounded-full bg-white text-black font-bold flex items-center justify-center">
+          {initial}
+        </div>
+      )}
+
+    
+      <div
+        className={`p-3 rounded-lg max-w-[70%] ${
+          isCurrentUser ? "bg-blue-600 text-white ml-auto" : "bg-gray-800 text-white"
+        }`}
+      >
+        <p className="text-sm">
+          {msg.isDeleted ? (
+            <em className="text-gray-400 italic">This message was deleted.</em>
+          ) : (
+            msg.text
+          )}
+
          
-                  <div
-                    className={`p-3 rounded-lg max-w-[70%] ${
-                      isCurrentUser
-                        ? "bg-blue-600 text-white ml-auto"
-                        : "bg-gray-800 text-white"
-                    }`}
-                  >
-                    <p className="text-sm">
-                      {msg.isDeleted ? (
-                        <em className="text-gray-400 italic">
-                          This message was deleted.
-                        </em>
-                      ) : (
-                        msg.text
-                      )}
-                 
-                      {!msg.isDeleted && isCurrentUser && (
-                        <button
-                          onClick={() => deleteMessage(msg.chatId)}
-                          className="ml-2 text-sm text-red-300 hover:text-red-500"
-                        >
-                          <FaTrashAlt />
-                        </button>
-                      )}
-                    </p>
-                    <span className="text-xs text-gray-300 mt-1 block">
-                      {senderName}
-                    </span>
-                  </div>
+          {!msg.isDeleted && isCurrentUser && (
+            <button
+              onClick={() => deleteMessage(msg.id)}
+              className="ml-2 text-sm text-red-300 hover:text-red-500"
+            >
+              <FaTrashAlt />
+            </button>
+          )}
+        </p>
+        <span className="text-xs text-gray-300 mt-1 block">{senderName}</span>
+      </div>
 
-                  {isCurrentUser && (
-                    <div className="w-10 h-10 rounded-full bg-white text-black font-bold flex items-center justify-center">
-                      {initial}
-                    </div>
-                  )}
-                </div>
-              );
-            })}
+     
+      {isCurrentUser && (
+        <div className="w-10 h-10 rounded-full bg-white text-black font-bold flex items-center justify-center">
+          {initial}
+        </div>
+      )}
+    </div>
+  );
+})}
+
 
             <div ref={messagesEndRef} />
           </div>
@@ -576,3 +555,4 @@ const ChatRoom = () => {
   );
 };
 export default ChatRoom;
+

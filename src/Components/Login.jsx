@@ -22,10 +22,10 @@ const Login = () => {
         try {
             await signInWithEmailAndPassword(auth, email, password)
                 .then(() => {
-                    setLoading(false); 
-                    // const loginsuccess = window.confirm("You Are Successfuly logged in..")
+                    setLoading(true); 
+                 
                     toast.success("Login successful!");
-                    
+                    setLoading(false); 
                      setTimeout(() => {
                       navigate("/group");
                      }, 2000);
@@ -53,8 +53,10 @@ const Login = () => {
                 .then(() => {
                     setLoading(false);
                     toast.success("Google login successful!");
-                 
+                    
+                    setTimeout(() => {
                       navigate("/group");
+                    }, 2000);
                     
                 })
                 .catch((err) => {

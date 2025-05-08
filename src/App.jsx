@@ -11,13 +11,13 @@ import 'react-toastify/dist/ReactToastify.css';
 const App = () => {
   return (
     <>
-    <ToastContainer position="top-center" autoClose={2000} />
+    <ToastContainer position="top-center" style={{width:'50%'}} autoClose={2000} />
       <Routes>
         <Route path="/" element={<Login />} />
         <Route path="/group" element={<ChatRoom />} />
         <Route path="/signup" element={<SignUp />} />
         
-        {/* <Route path="/messages/:roomId" element={<Private />} /> */}
+    
       </Routes>
   </>
   );

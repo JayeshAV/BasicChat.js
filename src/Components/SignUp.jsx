@@ -66,25 +66,27 @@ const SignUp = () => {
             return toast.error("user already exist !")
            
         }
-        
 
       try {
-       
-
-        const docref=await addDoc(collection(db,"users"),{
-            email:values.email,
-            password:values.password,
-            confirmPassword:values.confirmPassword,
-            displayName:values.displayName,
-            createdAt:new Date()
-        })
-        console.log("document writte id:",docref.id)
-        // alert("date saved to firebase")
 
         const userCredential = await createUserWithEmailAndPassword(auth, values.email, values.password);
         const user = userCredential.user;
         console.log("✅ Logged in user:", user);
-        // alert("Login Successful!");
+        
+
+        const docref=await addDoc(collection(db,"users"),{
+           
+            email:values.email,
+            password:values.password,
+            confirmPassword:values.confirmPassword,
+            displayName:values.displayName,
+            createdAt:new Date(),
+            uid:user.uid             
+        })
+        console.log("document writte id:",docref.id)
+      
+        
+
         
         toast.success("User Logged in")
 
