@@ -138,7 +138,7 @@ const ChatRoom = () => {
         }
         const fetchedMessages = [];
         snapshot.forEach((doc) => {
-          fetchedMessages.push({ ...doc.data(), id: doc.uid });
+          fetchedMessages.push({ ...doc.data(), id: doc.id });
         });
         setMessages(fetchedMessages);
       },
@@ -150,58 +150,8 @@ const ChatRoom = () => {
     return () => unsubscribe();
   }, [auth, selectedUser]);
 
-  const debugMessages = async () => {
-    if (!auth.currentUser || !selectedUser) {
-      console.log("Can't debug: No current user or selected user");
-      return;
-    }
 
-    try {
-      const currentUserId = auth.currentUser.uid;
-      const otherUserId = selectedUser.uid;
-
-      console.log("===== MESSAGE DEBUGGING =====");
-      console.log("Current user ID:", currentUserId);
-      console.log("Selected user ID:", otherUserId);
-
-      const allPrivateMessages = await getDocs(
-        collection(db, privateChatCollectionName)
-      );
-      console.log("Total messages in collection:", allPrivateMessages.size);
-
-      setPrivateMessage(allPrivateMessages);
-
-      allPrivateMessages.forEach((doc) => {
-        const msgData = doc.data();
-        console.log("Message:", doc.id, msgData);
-
-        const participants = msgData.participants || [];
-        console.log("- Participants:", participants);
-        console.log(
-          "- Contains current user:",
-          participants.includes(currentUserId)
-        );
-        console.log(
-          "- Contains selected user:",
-          participants.includes(otherUserId)
-        );
-
-        console.log("- Sender UID:", msgData.uid);
-        console.log("- Recipient UID:", msgData.recipientUid);
-        console.log(
-          "- Direct match:",
-          (msgData.uid === currentUserId &&
-            msgData.recipientUid === otherUserId) ||
-            (msgData.uid === otherUserId &&
-              msgData.recipientUid === currentUserId)
-        );
-      });
-
-      console.log("===== END DEBUGGING =====");
-    } catch (error) {
-      console.error("Debug error:", error);
-    }
-  };
+  
 
   useEffect(() => {
     const fetchUsers = async () => {
@@ -227,6 +177,7 @@ const ChatRoom = () => {
   }, []);
 
   const deleteMessage = async (chatId) => {
+    alert(chatId)
     try {
       const chatRef = doc(db, 'privateChats', chatId);
       const docSnapshot = await getDoc(chatRef);
@@ -239,7 +190,7 @@ const ChatRoom = () => {
       const confirmDelete = window.confirm("Are you sure you want to delete this message?");
       if (confirmDelete) {
         await updateDoc(chatRef, {
-          isDeleted: true,  // `isDeleted` को true पर सेट करें
+          isDeleted: true,  
         });
         console.log("Chat marked as deleted!");
       }
@@ -270,6 +221,7 @@ const ChatRoom = () => {
     setSelectedUser(selectedUserWithUid);
     setSearchQuery("");
     setShowSearchInput(false);
+    
   };
 
   const currentUserDetails = users.find(
@@ -432,17 +384,19 @@ const ChatRoom = () => {
             </div>
           </div>
 
-          <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-[#0f172a] text-white">
-           {messages.length===0 && <div className="mb-20 flex flex-col items-center">
-  <div className="relative w-24 h-24 rounded-full flex items-center justify-center  shadow-inner opacity-10 bg-gradient-to-br from-blue-400 to-blue-600 shadow-md">
-    <p className="text-white text-6xl font-semibold">{selectedUser?.displayName[0]}</p>
-  </div>
-  <p className="mt-3 text-center text-xl font-semibold text-gray-300 tracking-wide">{selectedUser?.displayName.toUpperCase()}</p>
-</div>}
-            {messages.map((msg) => {
+          <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-[#0f172a] text-white pt-10">
+            {messages.length===0  ? (           <div className="mb-20 flex flex-col items-center">
+              <div className="relative w-24 h-24  rounded-full flex items-center justify-center  shadow-inner opacity-100 bg-gradient-to-br from-blue-100 to-blue-600 shadow-md">
+                <p className="text-white text-6xl font-semibold">{selectedUser?.displayName[0]}</p>
+              </div>
+              <p className="mt-3 text-center text-xl font-semibold text-gray-300 tracking-wide">{selectedUser?.displayName.toUpperCase()}</p>
+              <p className="text-gray-600 pt-3">no messages yet . say hello to the {selectedUser?.displayName}</p>
+            </div>):(messages.map((msg) => {
               const senderName = getSenderDisplayName(msg);
               const initial = senderName?.charAt(0).toUpperCase();
               const isCurrentUser = msg.uid === auth.currentUser?.uid;
+              const currentDocId= msg?.id 
+              console.log(currentDocId)
 
               return (
                 <div
@@ -473,14 +427,22 @@ const ChatRoom = () => {
                         msg.text
                       )}
                  
-                      {!msg.isDeleted && isCurrentUser && (
+                      {/* {!msg.isDeleted && isCurrentUser && (
                         <button
-                          onClick={() => deleteMessage(msg.chatId)}
+                          onClick={() => deleteMessage(msg.id)}
                           className="ml-2 text-sm text-red-300 hover:text-red-500"
                         >
                           <FaTrashAlt />
                         </button>
-                      )}
+                      )} */}
+                       
+                        <button
+                          onClick={() => deleteMessage(currentDocId)}
+                          className="ml-2 text-sm text-red-300 hover:text-red-500"
+                        >
+                          <FaTrashAlt />
+                        </button>
+                   
                     </p>
                     <span className="text-xs text-gray-300 mt-1 block">
                       {senderName}
@@ -494,7 +456,8 @@ const ChatRoom = () => {
                   )}
                 </div>
               );
-            })}
+            }))
+          }
 
             <div ref={messagesEndRef} />
           </div>
