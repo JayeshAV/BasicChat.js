@@ -17,6 +17,16 @@ import {
 import { FaSignOutAlt, FaTrashAlt, FaArrowLeft, FaSearch, FaClock, FaUsers, FaImage } from "react-icons/fa";
 import { useNavigate } from "react-router-dom";
 import EmojiPicker from "emoji-picker-react";
+// Correct imports
+import { FilePond, registerPlugin } from 'react-filepond';
+import 'filepond/dist/filepond.min.css';
+
+// Plugins
+import FilePondPluginFileValidateType from 'filepond-plugin-file-validate-type';
+import FilePondPluginFileValidateSize from 'filepond-plugin-file-validate-size';
+
+// Register plugins
+registerPlugin(FilePondPluginFileValidateType, FilePondPluginFileValidateSize);
 
 const ChatRoom = () => {
   const [message, setMessage] = useState("");
@@ -33,6 +43,7 @@ const ChatRoom = () => {
   const privateChatCollectionName = "privateChats";
   const [imageFiles, setImageFiles] = useState([]);
   const imageInputRef = useRef(null);
+  const [files, setFiles] = useState([]);
 
   const handleEmojiClick = (emojiData) => {
     setMessage((prev) => prev + emojiData.emoji);
@@ -50,9 +61,18 @@ const ChatRoom = () => {
   };
 
   const handleImageChange = (e) => {
-    const files = Array.from(e.target.files);
-    const validImageFiles = files.filter((file) => file.type.startsWith("image/"));
-    setImageFiles(validImageFiles);
+    const newFiles = Array.from(e.target.files).filter((file) =>
+      file.type.startsWith("image/")
+    );
+    setImageFiles((prevFiles) => [...prevFiles, ...newFiles]);
+  };
+
+  const handleCancel = (indexToRemove) => {
+    setImageFiles((prevFiles) => {
+      const updatedFiles = prevFiles.filter((_, index) => index !== indexToRemove);
+      console.log("Updated imageFiles after cancel:", updatedFiles); // Debugging log
+      return updatedFiles;
+    });
   };
 
   const triggerImageUpload = () => {
@@ -80,6 +100,8 @@ const ChatRoom = () => {
       alert("Please select a user to chat with first");
       return;
     }
+
+    console.log("imageFiles before send:", imageFiles); // Debugging log
 
     try {
       const currentUserData = users.find(
@@ -123,7 +145,7 @@ const ChatRoom = () => {
             base64Images.push(base64);
           } catch (error) {
             console.error("Error converting image to base64:", error);
-            alert("Failed to process image: " + error.message);
+            console.log("Failed to process image: " + error.message);
             return; // Stop sending message if any image conversion fails
           }
         }
@@ -150,14 +172,15 @@ const ChatRoom = () => {
       );
 
       setMessage("");
-      setImageFiles([]);
+      setImageFiles([]); 
+      console.log("imageFiles after send:", []); 
       updateRecentContacts(
         recipientUid,
         message || (base64Images.length > 0 ? "Sent images" : ""),
         localTimeStamp
       );
     } catch (error) {
-      console.error("Error sending message:", error);
+      console.error("Error sending message:", error); 
       alert("Failed to send message: " + error.message);
     }
   };
@@ -486,6 +509,7 @@ const ChatRoom = () => {
     setShowSearchInput(false);
   };
 
+
   const filterUsers = users.filter(
     (user) =>
       user.displayName?.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -496,6 +520,8 @@ const ChatRoom = () => {
     setViewMode(mode);
   };
 
+
+  
   return (
     <>
       <div className="flex h-screen">
@@ -800,77 +826,107 @@ const ChatRoom = () => {
           </div>
 
           <div className="p-4 bg-[#1a2436] border-t border-gray-700 relative">
-            <form
-              onSubmit={sendMessage}
-              className="flex flex-wrap md:flex-nowrap items-center gap-2"
-            >
-              <input
-                className="flex-1 p-3 rounded-full bg-[#131c2e] text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 min-w-[150px]"
-                value={message}
-                onChange={(e) => setMessage(e.target.value)}
-                placeholder={
-                  selectedUser
-                    ? `Message ${
-                        selectedUser.displayName ||
-                        selectedUser.email?.split("@")[0]
-                      }...`
-                    : "Select a user to start chatting..."
-                }
-                disabled={!selectedUser}
-              />
-              <input
-                type="file"
-                multiple
-                accept="image/*"
-                onChange={handleImageChange}
-                className="hidden"
-                ref={imageInputRef}
-                disabled={!selectedUser}
-              />
-              <div className="flex gap-2">
-                <button
-                  type="button"
-                  onClick={triggerImageUpload}
-                  className="p-3 rounded-full bg-[#131c2e] hover:bg-gray-600 text-white"
-                  disabled={!selectedUser}
-                >
-                  <FaImage />
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setShowEmojiPicker((prev) => !prev)}
-                  className="p-3 rounded-full bg-[#131c2e] hover:bg-gray-600 text-white"
-                  disabled={!selectedUser}
-                >
-                  😊
-                </button>
-                <button
-                  type="submit"
-                  className="p-3 rounded-full bg-blue-600 hover:bg-blue-700 text-white flex items-center"
-                  disabled={!selectedUser || (message.trim() === "" && imageFiles.length === 0)}
-                >
-                  <svg
-                    xmlns="http://www.w3.org/2000/svg"
-                    className="h-5 w-5"
-                    viewBox="0 0 24 24"
-                    fill="currentColor"
-                  >
-                    <path d="M3.478 2.405a.75.75 0 00-.926.94l2.432 7.905H13.5a.75.75 0 010 1.5H4.984l-2.432 7.905a.75.75 0 00.926.94 60.519 60.519 0 0018.445-8.986.75.75 0 000-1.218A60.517 60.517 0 003.478 2.405z" />
-                  </svg>
-                </button>
-              </div>
-            </form>
+      <form
+        onSubmit={sendMessage}
+        className="flex flex-wrap md:flex-nowrap items-center gap-2"
+      >
+        <input
+          className="flex-1 p-3 rounded-full bg-[#131c2e] text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 min-w-[150px]"
+          value={message}
+          onChange={(e) => setMessage(e.target.value)}
+          placeholder={
+            selectedUser
+              ? `Message ${
+                  selectedUser.displayName || selectedUser.email?.split("@")[0]
+                }...`
+              : "Select a user to start chatting..."
+          }
+          disabled={!selectedUser}
+        />
 
-            {showEmojiPicker && (
-              <div className="absolute bottom-10 right-10 z-50 scale-90 origin-top-right">
-                <EmojiPicker
-                  onEmojiClick={handleEmojiClick}
-                  theme="dark"
-                  emojiStyle="native"
-                />
-              </div>
-            )}
+        {/* Display Selected Images */}
+        {imageFiles.length > 0 && (
+          <div className="image-preview flex flex-wrap gap-2">
+            {imageFiles.map((file, index) => (
+  <div key={index} className="relative">
+    <img
+      src={URL.createObjectURL(file)}
+      alt={`Preview ${index}`}
+      className="w-24 h-24 object-cover rounded-md"
+    />
+    {/* Cancel button for each image - PASS THE INDEX */}
+    <button
+      onClick={() => handleCancel(index)}
+      className="absolute top-0 right-0 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center"
+    >
+      &times;
+    </button>
+  </div>
+))}
           </div>
+        )}
+
+        {/* Image Upload Button */}
+        <div className="flex gap-2">
+          <button
+            type="button"
+            onClick={() => imageInputRef.current.click()}
+            className="p-3 rounded-full bg-[#131c2e] hover:bg-gray-600 text-white"
+            disabled={!selectedUser}
+          >
+            <FaImage />
+          </button>
+          <input
+            type="file"
+
+            accept="image/*"
+            onChange={handleImageChange}
+            className="hidden"
+            ref={imageInputRef}
+          />
+        </div>
+
+        {/* Emoji Button */}
+        <button
+          type="button"
+          onClick={() => setShowEmojiPicker((prev) => !prev)}
+          className="p-3 rounded-full bg-[#131c2e] hover:bg-gray-600 text-white"
+          disabled={!selectedUser}
+        >
+          😊
+        </button>
+
+        {/* Send Button */}
+        <button
+          type="submit"
+          className="p-3 rounded-full bg-blue-600 hover:bg-blue-700 text-white flex items-center"
+          disabled={
+            !selectedUser ||
+            (message.trim() === "" && imageFiles.length === 0)
+          }
+        >
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            className="h-5 w-5"
+            viewBox="0 0 24 24"
+            fill="currentColor"
+          >
+            <path d="M3.478 2.405a.75.75 0 00-.926.94l2.432 7.905H13.5a.75.75 0 010 1.5H4.984l-2.432 7.905a.75.75 0 00.926.94 60.519 60.519 0 0018.445-8.986.75.75 0 000-1.218A60.517 60.517 0 003.478 2.405z" />
+          </svg>
+        </button>
+      </form>
+
+      {/* Emoji Picker */}
+      {showEmojiPicker && (
+        <div className="absolute bottom-10 right-10 z-50 scale-90 origin-top-right">
+          <EmojiPicker
+            onEmojiClick={handleEmojiClick}
+            theme="dark"
+            emojiStyle="native"
+          />
+        </div>
+      )}
+    </div>
         </div>
       </div>
     </>
