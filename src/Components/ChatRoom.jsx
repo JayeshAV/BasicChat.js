@@ -14,8 +14,9 @@ import {
   where,
   getDoc,
 } from "firebase/firestore";
-import { FaSignOutAlt, FaTrashAlt, FaArrowLeft } from "react-icons/fa";
+import { FaSignOutAlt, FaTrashAlt, FaArrowLeft, FaSearch, FaClock, FaUsers } from "react-icons/fa";
 import { useNavigate } from "react-router-dom";
+import EmojiPicker from "emoji-picker-react";
 
 const ChatRoom = () => {
   const [message, setMessage] = useState("");
@@ -25,14 +26,26 @@ const ChatRoom = () => {
   const [showSearchInput, setShowSearchInput] = useState(false);
   const [selectedUser, setSelectedUser] = useState(null);
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
+  const [recentContacts, setRecentContacts] = useState([]);
+  const [viewMode, setViewMode] = useState("recent");
   const messagesEndRef = useRef(null);
   const navigate = useNavigate();
   const privateChatCollectionName = "privateChats";
-  const [privateMessage, setPrivateMessage] = useState([]);
+
+  const handleEmojiClick = (emojiData) => {
+    setMessage((prev) => prev + emojiData.emoji);
+  };
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
+
+  const getFormattedTime = () => {
+    const now = new Date();
+    const hours = now.getHours().toString().padStart(2, '0');
+    const minutes = now.getMinutes().toString().padStart(2, '0');
+    return `${hours}:${minutes}`;
+  };
 
   const sendMessage = async (e) => {
     e.preventDefault();
@@ -48,13 +61,9 @@ const ChatRoom = () => {
     }
 
     try {
-      console.log("Current auth user:", auth.currentUser);
-      console.log("Selected user for messaging:", selectedUser);
-
       const currentUserData = users.find(
         (user) => user.email === auth.currentUser?.email
       );
-      console.log("Found current user data:", currentUserData);
 
       const displayName =
         currentUserData?.displayName ||
@@ -64,9 +73,6 @@ const ChatRoom = () => {
 
       const senderId = auth.currentUser.uid;
       const recipientUid = selectedUser.uid;
-      console.log("selected user uid", selectedUser.uid);
-      console.log("Sender ID:", senderId);
-      console.log("Recipient ID:", recipientUid);
 
       if (!senderId) {
         console.error("Current user has no valid UID");
@@ -87,9 +93,12 @@ const ChatRoom = () => {
       const participants = [senderId, recipientUid];
       const chatId = participants.sort().join("_");
 
+      const localTimeStamp = getFormattedTime();
+
       const messageData = {
         text: message,
         createdAt: serverTimestamp(),
+        localTimeStamp: localTimeStamp,
         uid: senderId,
         email: auth.currentUser.email,
         displayName: displayName,
@@ -100,20 +109,51 @@ const ChatRoom = () => {
         chatId: chatId,
       };
 
-      console.log("Attempting to send message with data:", messageData);
-
       const docRef = await addDoc(
         collection(db, privateChatCollectionName),
         messageData
       );
 
-      console.log("Message sent successfully with ID:", docRef.id);
-
       setMessage("");
+      updateRecentContacts(recipientUid, message, localTimeStamp);
+
     } catch (error) {
       console.error("Error sending message:", error);
       alert("Failed to send message: " + error.message);
     }
+  };
+
+  const updateRecentContacts = (recipientUid, lastMessage, lastMessageTime) => {
+    setRecentContacts((prevContacts) => {
+      const existingContactIndex = prevContacts.findIndex(
+        (contact) => contact.uid === recipientUid
+      );
+
+      if (existingContactIndex > -1) {
+        // Move the existing contact to the top and update last message
+        const existingContact = prevContacts[existingContactIndex];
+        const updatedContacts = [...prevContacts];
+        updatedContacts.splice(existingContactIndex, 1);
+        updatedContacts.unshift({ ...existingContact, lastMessage, lastMessageTime });
+        return updatedContacts;
+      } else {
+        // Add the new contact to the top (if it doesn't already exist)
+        const recipientUser = users.find((user) => user.uid === recipientUid);
+        if (recipientUser) {
+          return [
+            {
+              uid: recipientUser.uid,
+              displayName: recipientUser.displayName,
+              email: recipientUser.email,
+              lastMessage: lastMessage,
+              lastMessageTime: lastMessageTime,
+            },
+            ...prevContacts,
+          ];
+        }
+        return prevContacts;
+      }
+    });
   };
 
   useEffect(() => {
@@ -128,7 +168,6 @@ const ChatRoom = () => {
       where("chatId", "==", chatId),
       orderBy("createdAt", "asc")
     );
-    console.log("useffect render when chat id is ", chatId);
 
     const unsubscribe = onSnapshot(
       messagesQuery,
@@ -146,13 +185,69 @@ const ChatRoom = () => {
         console.error("Error fetching messages: ", error);
       }
     );
-    console.log(chatId);
     return () => unsubscribe();
   }, [auth, selectedUser]);
 
+  // Fetch recent contacts
+  useEffect(() => {
+    if (!auth.currentUser) return;
 
-  
+    const currentUserId = auth.currentUser.uid;
+    const chatIds = new Set();
+    const unsubscribe = onSnapshot(
+      collection(db, privateChatCollectionName),
+      async (snapshot) => {
+        try {
+          snapshot.forEach((doc) => {
+            const chatData = doc.data();
+            if (chatData.participants.includes(currentUserId)) {
+              chatIds.add(chatData.chatId);
+            }
+          });
 
+          const uniqueContacts = new Map();
+
+          for (const chatId of chatIds) {
+            const chatMessagesQuery = query(
+              collection(db, privateChatCollectionName),
+              where("chatId", "==", chatId),
+              orderBy("createdAt", "desc"),
+
+            );
+
+            const chatMessagesSnapshot = await getDocs(chatMessagesQuery);
+            if (!chatMessagesSnapshot.empty) {
+              const lastMessageDoc = chatMessagesSnapshot.docs[0];
+              const lastMessageData = lastMessageDoc.data();
+              const otherUserId = lastMessageData.participants.find(
+                (uid) => uid !== currentUserId
+              );
+
+              if (otherUserId) {
+                const otherUser = users.find((u) => u.uid === otherUserId);
+                if (otherUser) {
+                  const contactKey = otherUser.uid;
+                  if (!uniqueContacts.has(contactKey)) {
+                    uniqueContacts.set(contactKey, {
+                      uid: otherUser.uid,
+                      displayName: otherUser.displayName,
+                      email: otherUser.email,
+                      lastMessage: lastMessageData.text,
+                      lastMessageTime: lastMessageData.localTimeStamp,
+                    });
+                  }
+                }
+              }
+            }
+          }
+          setRecentContacts(Array.from(uniqueContacts.values()));
+        } catch (error) {
+          console.error("Error fetching recent contacts:", error);
+        }
+      }
+    );
+    return () => unsubscribe();
+  }, [auth.currentUser, users]);
   useEffect(() => {
     const fetchUsers = async () => {
       try {
@@ -166,8 +261,6 @@ const ChatRoom = () => {
             ...userData,
           });
         });
-        console.log("Fetched users:", userList);
-        console.log(userSnapshot);
         setUsers(userList);
       } catch (error) {
         console.error("Error fetching users:", error);
@@ -177,20 +270,19 @@ const ChatRoom = () => {
   }, []);
 
   const deleteMessage = async (chatId) => {
-    alert(chatId)
     try {
       const chatRef = doc(db, 'privateChats', chatId);
       const docSnapshot = await getDoc(chatRef);
-      
+
       if (!docSnapshot.exists()) {
         console.log("Document not found!");
-        return; 
+        return;
       }
-  
+
       const confirmDelete = window.confirm("Are you sure you want to delete this message?");
       if (confirmDelete) {
         await updateDoc(chatRef, {
-          isDeleted: true,  
+          isDeleted: true,
         });
         console.log("Chat marked as deleted!");
       }
@@ -217,11 +309,9 @@ const ChatRoom = () => {
       uid: user.uid,
     };
 
-    console.log("Selected user with uid:", selectedUserWithUid);
     setSelectedUser(selectedUserWithUid);
     setSearchQuery("");
     setShowSearchInput(false);
-    
   };
 
   const currentUserDetails = users.find(
@@ -229,9 +319,6 @@ const ChatRoom = () => {
   );
 
   const getSenderDisplayName = (msg) => {
-    // if (msg.uid === auth.currentUser?.uid) {
-    //   return "You";
-    // }
     const msgUser = users.find(
       (user) => user.uid === msg.uid || user.email === msg.email
     );
@@ -276,21 +363,41 @@ const ChatRoom = () => {
         .toLowerCase()
         .includes(searchQuery.toLowerCase())
   );
-  console.log(filterUsers);
+
+  const toggleViewMode = (mode) => {
+    setViewMode(mode);
+  };
 
   return (
     <>
       <div className="flex h-screen">
-        <div className="w-full md:w-100 bg-[#1A2436] border-r border-gray-700 overflow-y-auto sm:hidden hidden xl:block">
+        <div className="w-full md:w-80 bg-[#1A2436] border-r border-gray-700 overflow-y-auto sm:hidden hidden xl:block">
           <div className="bg-[#1a2436] p-4 shadow-md flex items-center justify-between sticky top-0 z-10">
-            <h2 className="text-xl text-white font-bold">Users</h2>
-            <button
-              className="bg-blue-500 text-white p-2 rounded-lg"
-              onClick={handleSearchBtn}
-            >
-              Search
-            </button>
+            <h2 className="text-xl text-white font-bold">Chat</h2>
+            <div className="flex gap-2">
+              <button
+                className={`p-2 rounded-lg ${viewMode === 'recent' ? 'bg-blue-600' : 'bg-gray-700'}`}
+                onClick={() => toggleViewMode('recent')}
+                title="Recent Chats"
+              >
+                <FaClock className="text-white" />
+              </button>
+              <button
+                className={`p-2 rounded-lg ${viewMode === 'all' ? 'bg-blue-600' : 'bg-gray-700'}`}
+                onClick={() => toggleViewMode('all')}
+                title="All Users"
+              >
+                <FaUsers className="text-white" />
+              </button>
+              <button
+                className="bg-blue-500 text-white p-2 rounded-lg"
+                onClick={handleSearchBtn}
+              >
+                <FaSearch />
+              </button>
+            </div>
           </div>
+
           {showSearchInput && (
             <div className="p-4">
               <div className="flex">
@@ -307,43 +414,116 @@ const ChatRoom = () => {
               </div>
             </div>
           )}
+
           <div className="pt-2">
-            {!searchQuery && (
+            {/* Show search results */}
+            {searchQuery && filterUsers.filter(user => user.uid !== auth.currentUser?.uid).map((user) => (
+              <div
+                key={user.uid}
+                className={`mb-2 cursor-pointer ${
+                  selectedUser?.uid === user.uid
+                    ? "border-l-4 border-blue-500 bg-gray-700"
+                    : ""
+                }`}
+                onClick={() => handleUserSelect(user)}
+              >
+                <h1 className="text-white text-xl bg-gray-700 py-2 rounded-xl m-1 ps-2 flex items-center">
+                  <span className="p-2 rounded-full px-4 bg-blue-500 me-4">
+                    {(
+                      user.displayName?.charAt(0) ||
+                      user.email?.charAt(0) ||
+                      "U"
+                    ).toUpperCase()}
+                  </span>
+                  {user.displayName ||
+                    user.email?.split("@")[0] ||
+                    "Unknown User"}
+                </h1>
+              </div>
+            ))}
+
+            {/* Show recent contacts when in recent mode and not searching */}
+            {!searchQuery && viewMode === 'recent' && (
+              <>
+                <h3 className="text-gray-400 text-sm font-medium px-4 py-2">RECENT CHATS</h3>
+                {recentContacts.length > 0 ? (
+                  recentContacts.map((contact) => (
+                    <div
+                      key={contact.uid}
+                      className={`mb-2 cursor-pointer ${
+                        selectedUser?.uid === contact.uid
+                          ? "border-l-4 border-blue-500 bg-gray-700"
+                          : ""
+                      }`}
+                      onClick={() => handleUserSelect(contact)}
+                    >
+                      <div className="text-white bg-gray-700 hover:bg-gray-600 py-2 rounded-xl m-1 ps-2 flex items-center">
+                        <span className="p-2 rounded-full px-4 bg-blue-500 me-4">
+                          {(contact.displayName?.charAt(0) || "U").toUpperCase()}
+                        </span>
+                        <div className="flex-1 overflow-hidden">
+                          <h3 className="font-medium">{contact.displayName}</h3>
+                          <p className="text-gray-400 text-sm truncate">{contact.lastMessage || "Start a conversation"}</p>
+                        </div>
+                      </div>
+                    </div>
+                  ))
+                ) : (
+                  <div className="text-center text-gray-400 p-4">
+                    No recent conversations found
+                  </div>
+                )}
+              </>
+            )}
+
+            {/* Show all users when in all mode and not searching */}
+            {!searchQuery && viewMode === 'all' && (
+              <>
+                <h3 className="text-gray-400 text-sm font-medium px-4 py-2">ALL USERS</h3>
+                {users.filter(user => user.uid !== auth.currentUser?.uid).length > 0 ? (
+                  users.filter(user => user.uid !== auth.currentUser?.uid).map((user) => (
+                    <div
+                      key={user.uid}
+                      className={`mb-2 cursor-pointer ${
+                        selectedUser?.uid === user.uid
+                          ? "border-l-4 border-blue-500 bg-gray-700"
+                          : ""
+                      }`}
+                      onClick={() => handleUserSelect(user)}
+                    >
+                      <h1 className="text-white text-xl bg-gray-700 hover:bg-gray-600 py-2 rounded-xl m-1 ps-2 flex items-center">
+                        <span className="p-2 rounded-full px-4 bg-blue-500 me-4">
+                          {(
+                            user.displayName?.charAt(0) ||
+                            user.email?.charAt(0) ||
+                            "U"
+                          ).toUpperCase()}
+                        </span>
+                        {user.displayName ||
+                          user.email?.split("@")[0] ||
+                          "Unknown User"}
+                      </h1>
+                    </div>
+                  ))
+                ) : (
+                  <div className="text-center text-gray-400 p-4">
+                    No other users found
+                  </div>
+                )}
+              </>
+            )}
+
+            {/* Default message when nothing is displayed */}
+            {!searchQuery && viewMode !== 'recent' && viewMode !== 'all' && (
               <div className="text-center text-gray-400 p-4">
-                Search for users to start chatting
+                Select view mode to see users
               </div>
             )}
-            
-            {searchQuery ? (filterUsers.filter((user) => user.uid !== auth.currentUser?.uid)
-              .map((user) => (
-                <div
-                  key={user.uid}
-                  className={`mb-2 cursor-pointer ${
-                    selectedUser?.uid === user.uid
-                      ? "border-l-4 border-blue-500 bg-gray-700"
-                      : ""
-                  }`}
-                  onClick={() => handleUserSelect(user)}
-                >
-                  <h1 className="text-white text-xl bg-gray-700 py-2 rounded-xl m-1 ps-2 flex items-center">
-                    <span className="p-2 rounded-full px-4 bg-blue-500 me-4">
-                      {(
-                        user.displayName?.charAt(0) ||
-                        user.email?.charAt(0) ||
-                        "U"
-                      ).toUpperCase()}
-                    </span>
-                    {user.displayName ||
-                      user.email?.split("@")[0] ||
-                      "Unknown User"}
-                  </h1>
-                </div>
-              ))):("")}
-
           </div>
         </div>
+
         <div className="flex-1 flex flex-col bg-[#131c2e] text-white">
-          <div className="bg-[#1a2436] p-[22px] shadow-md flex items-center justify-between">
+          <div className="bg-[#1a2436] p-5 shadow-md flex items-center justify-between">
             <h2 className="text-xl font-bold flex-1">
               {selectedUser ? (
                 <div className="flex items-center">
@@ -375,89 +555,90 @@ const ChatRoom = () => {
             </h2>
             <div className="flex">
               <h1 className="pe-3">{currentUserDetails?.displayName}</h1>
-            <button
-              onClick={handleLogout}
-              className="rounded-full text-white hover:text-red-400"
-            >
-              <FaSignOutAlt className="h-5 w-5" />
-            </button>
+              <button
+                onClick={handleLogout}
+                className="rounded-full text-white hover:text-red-400"
+              >
+                <FaSignOutAlt className="h-5 w-5" />
+              </button>
             </div>
           </div>
 
           <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-[#0f172a] text-white pt-10">
-            {messages.length===0  ? (           <div className="mb-20 flex flex-col items-center">
-              <div className="relative w-24 h-24  rounded-full flex items-center justify-center  shadow-inner opacity-100 bg-gradient-to-br from-blue-100 to-blue-600 shadow-md">
-                <p className="text-white text-6xl font-semibold">{selectedUser?.displayName[0]}</p>
+            {messages.length === 0 ? (
+              <div className="mb-20 flex flex-col items-center">
+                <div className="relative w-24 h-24 rounded-full flex items-center justify-center shadow-inner opacity-100 bg-gradient-to-br from-blue-100 to-blue-600 shadow-md">
+                  <p className="text-white text-6xl font-semibold">
+                    {selectedUser?.displayName?.[0]?.toUpperCase() || "?"}
+                  </p>
+                </div>
+                <p className="mt-3 text-center text-xl font-semibold text-gray-300 tracking-wide">
+                  {selectedUser?.displayName?.toUpperCase() || "SELECT A USER"}
+                </p>
+                <p className="text-gray-600 pt-3">
+                  {selectedUser ? `No messages yet. Say hello to ${selectedUser?.displayName}!` : "Select a user to begin chatting"}
+                </p>
               </div>
-              <p className="mt-3 text-center text-xl font-semibold text-gray-300 tracking-wide">{selectedUser?.displayName.toUpperCase()}</p>
-              <p className="text-gray-600 pt-3">no messages yet . say hello to the {selectedUser?.displayName}</p>
-            </div>):(messages.map((msg) => {
-              const senderName = getSenderDisplayName(msg);
-              const initial = senderName?.charAt(0).toUpperCase();
-              const isCurrentUser = msg.uid === auth.currentUser?.uid;
-              const currentDocId= msg?.id 
-              console.log(currentDocId)
+            ) : (
+              messages.map((msg) => {
+                const senderName = getSenderDisplayName(msg);
+                const initial = senderName?.charAt(0).toUpperCase();
+                const isCurrentUser = msg.uid === auth.currentUser?.uid;
+                const currentDocId = msg?.id;
+                const messageTime = msg.localTimeStamp;
 
-              return (
-                <div
-                  key={msg.id}
-                  className={`flex items-start gap-2 mb-3 ${
-                    isCurrentUser ? "justify-end" : "justify-start"
-                  }`}
-                >
-                  {!isCurrentUser && (
-                    <div className="w-10 h-10 rounded-full bg-white text-black font-bold flex items-center justify-center">
-                      {initial}
-                    </div>
-                  )}
-         
+                return (
                   <div
-                    className={`p-3 rounded-lg max-w-[70%] ${
-                      isCurrentUser
-                        ? "bg-blue-600 text-white ml-auto"
-                        : "bg-gray-800 text-white"
+                    key={msg.id}
+                    className={`flex items-start gap-2 mb-3 ${
+                      isCurrentUser ? "justify-end" : "justify-start"
                     }`}
                   >
-                    <p className="text-sm">
-                      {msg.isDeleted ? (
-                        <em className="text-gray-400 italic">
-                          This message was deleted.
-                        </em>
-                      ) : (
-                        msg.text
-                      )}
-                 
-                      {/* {!msg.isDeleted && isCurrentUser && (
-                        <button
-                          onClick={() => deleteMessage(msg.id)}
-                          className="ml-2 text-sm text-red-300 hover:text-red-500"
-                        >
-                          <FaTrashAlt />
-                        </button>
-                      )} */}
-                       
-                        <button
-                          onClick={() => deleteMessage(currentDocId)}
-                          className="ml-2 text-sm text-red-300 hover:text-red-500"
-                        >
-                          <FaTrashAlt />
-                        </button>
-                   
-                    </p>
-                    <span className="text-xs text-gray-300 mt-1 block">
-                      {senderName}
-                    </span>
-                  </div>
+                    {!isCurrentUser && (
+                      <div className="w-10 h-10 rounded-full bg-white text-black font-bold flex items-center justify-center">
+                        {initial}
+                      </div>
+                    )}
 
-                  {isCurrentUser && (
-                    <div className="w-10 h-10 rounded-full bg-white text-black font-bold flex items-center justify-center">
-                      {initial}
+                    <div
+                      className={`p-3 rounded-lg max-w-[70%] ${
+                        isCurrentUser
+                          ? "bg-blue-600 text-white ml-auto"
+                          : "bg-gray-800 text-white"
+                      }`}
+                    >
+                      <div className="text-sm flex justify-between">
+                        {msg.isDeleted ? (
+                          <em className="text-gray-400 italic">
+                            This message was deleted.
+                          </em>
+                        ) : (
+                          <span>{msg.text}</span>
+                        )}
+                        {isCurrentUser && !msg.isDeleted && (
+                          <button
+                            onClick={() => deleteMessage(currentDocId)}
+                            className="ml-2 text-sm text-red-300 hover:text-red-500"
+                          >
+                            <FaTrashAlt />
+                          </button>
+                        )}
+                      </div>
+                      <span className="text-xs text-gray-300 mt-1 block">
+                        {senderName}
+                      </span>
+                      <span className="text-xs text-gray-400">{messageTime}</span>
                     </div>
-                  )}
-                </div>
-              );
-            }))
-          }
+
+                    {isCurrentUser && (
+                      <div className="w-10 h-10 rounded-full bg-white text-black font-bold flex items-center justify-center">
+                        {initial}
+                      </div>
+                    )}
+                  </div>
+                );
+              })
+            )}
 
             <div ref={messagesEndRef} />
           </div>
@@ -506,30 +687,14 @@ const ChatRoom = () => {
                 </button>
               </div>
             </form>
+
             {showEmojiPicker && (
-              <div className="absolute bottom-20 right-16 bg-[#1a2436] p-3 rounded-lg shadow-lg border border-gray-700 grid grid-cols-6 gap-2 z-10">
-                {[
-                  "😊",
-                  "😂",
-                  "❤️",
-                  "👍",
-                  "🎉",
-                  "🔥",
-                  "😎",
-                  "🤔",
-                  "👀",
-                  "✨",
-                  "🙌",
-                  "👋",
-                ].map((emoji) => (
-                  <span
-                    key={emoji}
-                    onClick={() => setMessage((prev) => prev + emoji)}
-                    className="text-xl hover:bg-[#131c2e] p-1 rounded cursor-pointer"
-                  >
-                    {emoji}
-                  </span>
-                ))}
+              <div className="absolute bottom-10 right-10 z-50 scale-90 origin-top-right">
+                <EmojiPicker
+                  onEmojiClick={handleEmojiClick}
+                  theme="dark"
+                  emojiStyle="native"
+                />
               </div>
             )}
           </div>
@@ -538,4 +703,6 @@ const ChatRoom = () => {
     </>
   );
 };
+
 export default ChatRoom;
+
