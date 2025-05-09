@@ -211,7 +211,7 @@ const ChatRoom = () => {
             const chatMessagesQuery = query(
               collection(db, privateChatCollectionName),
               where("chatId", "==", chatId),
-              orderBy("createdAt", "desc"),
+              orderBy("createdAt", "asc"),
 
             );
 
