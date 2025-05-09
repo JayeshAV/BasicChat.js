@@ -115,7 +115,7 @@ const ChatRoom = () => {
       );
 
       setMessage("");
-      updateRecentContacts(recipientUid, message, localTimeStamp);
+      updateRecentContacts(recipientUid, text, localTimeStamp);
 
     } catch (error) {
       console.error("Error sending message:", error);
