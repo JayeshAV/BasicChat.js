@@ -371,7 +371,7 @@ const ChatRoom = () => {
   return (
     <>
       <div className="flex h-screen">
-        <div className="w-full md:w-80 bg-[#1A2436] border-r border-gray-700 overflow-y-auto sm:hidden hidden xl:block">
+        <div className="w-full md:w-80 bg-[#1A2436] border-r border-gray-700 overflow-y-auto   xl:block">
           <div className="bg-[#1a2436] p-4 shadow-md flex items-center justify-between sticky top-0 z-10">
             <h2 className="text-xl text-white font-bold">Chat</h2>
             <div className="flex gap-2">
