@@ -70,7 +70,7 @@ const ChatRoom = () => {
   const handleCancel = (indexToRemove) => {
     setImageFiles((prevFiles) => {
       const updatedFiles = prevFiles.filter((_, index) => index !== indexToRemove);
-      console.log("Updated imageFiles after cancel:", updatedFiles); // Debugging log
+      console.log("Updated imageFiles after cancel:", updatedFiles); 
       return updatedFiles;
     });
   };
@@ -98,10 +98,10 @@ const ChatRoom = () => {
     if (message.trim() === "" && imageFiles.length === 0) return;
     if (!selectedUser) {
       alert("Please select a user to chat with first");
-      return;
+      return
     }
 
-    console.log("imageFiles before send:", imageFiles); // Debugging log
+    console.log("imageFiles before send:", imageFiles); 
 
     try {
       const currentUserData = users.find(
@@ -146,7 +146,7 @@ const ChatRoom = () => {
           } catch (error) {
             console.error("Error converting image to base64:", error);
             console.log("Failed to process image: " + error.message);
-            return; // Stop sending message if any image conversion fails
+            return; 
           }
         }
       }
