@@ -63,8 +63,7 @@ const SignUp = () => {
       
         const matchedmail = users.find((e)=>e.email===values.email)
         if(matchedmail) {
-            return toast.error("user already exist !")
-           
+            alert("user already exist !")
         }
 
       try {
@@ -85,14 +84,11 @@ const SignUp = () => {
         })
         console.log("document writte id:",docref.id)
       
-        
-
-        
         toast.success("User Logged in")
 
         setTimeout(() => {
             navigate("/group");
-          }, 2000);
+          }, 1000);
 
         resetForm()
 

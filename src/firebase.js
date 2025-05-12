@@ -17,3 +17,6 @@ const app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApps()[0
 
 export const auth = getAuth(app);
 export const db = getFirestore(app);  // Ensure Firestore is used, not Realtime Database
+import { getStorage } from "firebase/storage";
+const storage = getStorage(app);
+export { storage };

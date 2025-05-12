@@ -17,15 +17,12 @@ import {
 import { FaSignOutAlt, FaTrashAlt, FaArrowLeft, FaSearch, FaClock, FaUsers, FaImage } from "react-icons/fa";
 import { useNavigate } from "react-router-dom";
 import EmojiPicker from "emoji-picker-react";
-// Correct imports
 import { FilePond, registerPlugin } from 'react-filepond';
 import 'filepond/dist/filepond.min.css';
-
-// Plugins
 import FilePondPluginFileValidateType from 'filepond-plugin-file-validate-type';
 import FilePondPluginFileValidateSize from 'filepond-plugin-file-validate-size';
 
-// Register plugins
+
 registerPlugin(FilePondPluginFileValidateType, FilePondPluginFileValidateSize);
 
 const ChatRoom = () => {
@@ -44,6 +41,8 @@ const ChatRoom = () => {
   const [imageFiles, setImageFiles] = useState([]);
   const imageInputRef = useRef(null);
   const [files, setFiles] = useState([]);
+  const [shouldSendImages, setShouldSendImages] = useState(false);
+
 
   const handleEmojiClick = (emojiData) => {
     setMessage((prev) => prev + emojiData.emoji);
@@ -88,6 +87,8 @@ const ChatRoom = () => {
     });
   };
 
+
+
   const sendMessage = async (e) => {
     e.preventDefault();
     if (!auth.currentUser) {
@@ -102,6 +103,7 @@ const ChatRoom = () => {
     }
 
     console.log("imageFiles before send:", imageFiles); 
+  setShouldSendImages(true); 
 
     try {
       const currentUserData = users.find(
@@ -173,6 +175,8 @@ const ChatRoom = () => {
 
       setMessage("");
       setImageFiles([]); 
+      setShowEmojiPicker(false)
+      setShouldSendImages(false); 
       console.log("imageFiles after send:", []); 
       updateRecentContacts(
         recipientUid,
@@ -184,6 +188,7 @@ const ChatRoom = () => {
       alert("Failed to send message: " + error.message);
     }
   };
+
 
   const updateRecentContacts = (recipientUid, lastMessage, lastMessageTime) => {
     setRecentContacts((prevContacts) => {
@@ -220,6 +225,7 @@ const ChatRoom = () => {
     });
   };
 
+
   const updateRecentContactsOnNewMessage = (
     recipientUid,
     displayName,
@@ -242,7 +248,9 @@ const ChatRoom = () => {
           lastMessage,
           lastMessageTime,
         });
+
       } else {
+
         updatedContacts.unshift({
           uid: recipientUid,
           displayName: displayName,
@@ -250,6 +258,7 @@ const ChatRoom = () => {
           lastMessage: lastMessage,
           lastMessageTime: lastMessageTime,
         });
+
       }
 
       return [...updatedContacts].sort((a, b) =>
@@ -289,6 +298,7 @@ const ChatRoom = () => {
     );
     return () => unsubscribe();
   }, [auth, selectedUser]);
+
 
   useEffect(() => {
     if (!auth.currentUser) return;
@@ -356,30 +366,39 @@ const ChatRoom = () => {
     return () => unsubscribe();
   }, [auth.currentUser, users]);
 
+  
   useEffect(() => {
     if (!auth.currentUser) return;
 
     const currentUserId = auth.currentUser.uid;
+
     const unsubscribe = onSnapshot(
       collection(db, privateChatCollectionName),
       (snapshot) => {
+        console.log(snapshot)
+
         snapshot.docChanges().forEach((change) => {
           if (change.type === "added") {
+
             const newMessage = change.doc.data();
+
             if (newMessage.participants.includes(currentUserId)) {
+
               const otherUserId = newMessage.participants.find(
                 (uid) => uid !== currentUserId
+
               );
+
               let lastMessageText = newMessage.text;
+
               if (newMessage.images && newMessage.images.length > 0) {
                 lastMessageText = "Sent Images";
               }
 
-              // Find the other user's details from the 'users' collection
               const otherUser = users.find((user) => user.uid === otherUserId);
               if (otherUser) {
                 updateRecentContactsOnNewMessage(
-                  otherUser.uid,
+                  otherUser.uid,    
                   otherUser.displayName,
                   otherUser.email,
                   lastMessageText,
@@ -397,6 +416,7 @@ const ChatRoom = () => {
 
     return () => unsubscribe();
   }, [auth.currentUser, users]);
+
 
   useEffect(() => {
     const fetchUsers = async () => {
@@ -419,9 +439,11 @@ const ChatRoom = () => {
     fetchUsers();
   }, []);
 
-  const deleteMessage = async (chatId) => {
+
+  const deleteMessage = async (id) => {
+
     try {
-      const chatRef = doc(db, 'privateChats', chatId);
+      const chatRef = doc(db, 'privateChats', id);
       const docSnapshot = await getDoc(chatRef);
 
       if (!docSnapshot.exists()) {
@@ -432,11 +454,12 @@ const ChatRoom = () => {
       const confirmDelete = window.confirm(
         "Are you sure you want to delete this message?"
       );
+
       if (confirmDelete) {
         await updateDoc(chatRef, {
           isDeleted: true,
-          text: "This message was deleted.", // Optionally update text for deleted messages
-          images: [], // Remove images from deleted message
+          text: "This message was deleted.", 
+          images: [], 
         });
         console.log("Chat marked as deleted!");
       }
@@ -445,6 +468,7 @@ const ChatRoom = () => {
     }
   };
 
+
   const handleLogout = () => {
     const confirmLogout = window.confirm("Are you sure you want to logout?");
     if (confirmLogout) {
@@ -452,6 +476,7 @@ const ChatRoom = () => {
       navigate("/");
     }
   };
+
 
   const handleUserSelect = (user) => {
     if (user.uid === auth.currentUser?.uid) {
@@ -468,9 +493,11 @@ const ChatRoom = () => {
     setShowSearchInput(false);
   };
 
+
   const currentUserDetails = users.find(
     (user) => user.email === auth?.currentUser?.email
   );
+
 
   const getSenderDisplayName = (msg) => {
     const msgUser = users.find(
@@ -481,6 +508,7 @@ const ChatRoom = () => {
     }
     return msg.displayName || msg.email?.split("@")[0] || "Unknown User";
   };
+
 
   const getSenderInitial = (msg) => {
     if (msg.uid !== auth.currentUser?.uid) {
@@ -500,9 +528,11 @@ const ChatRoom = () => {
     return currentName.charAt(0).toUpperCase();
   };
 
+
   const handleSearchBtn = () => {
     setShowSearchInput(!showSearchInput);
   };
+
 
   const handleClose = () => {
     setSearchQuery("");
@@ -515,6 +545,7 @@ const ChatRoom = () => {
       user.displayName?.toLowerCase().includes(searchQuery.toLowerCase()) ||
       user.email?.split("@")[0].toLowerCase().includes(searchQuery.toLowerCase())
   );
+
 
   const toggleViewMode = (mode) => {
     setViewMode(mode);
@@ -574,7 +605,6 @@ const ChatRoom = () => {
           )}
 
           <div className="pt-2">
-            {/* Show search results */}
             {searchQuery &&
               filterUsers
                 .filter((user) => user.uid !== auth.currentUser?.uid)
@@ -792,7 +822,7 @@ const ChatRoom = () => {
                                   key={index}
                                   src={imageUrl}
                                   alt={`Image ${index + 1}`}
-                                  className="mt-2 rounded-md max-h-60" // Added max-h-60
+                                  className="mt-2 rounded-md max-h-60 mb-2" 
                                 />
                               ))}
                           </>
@@ -821,11 +851,11 @@ const ChatRoom = () => {
                 );
               })
             )}
-
             <div ref={messagesEndRef} />
           </div>
 
           <div className="p-4 bg-[#1a2436] border-t border-gray-700 relative">
+            
       <form
         onSubmit={sendMessage}
         className="flex flex-wrap md:flex-nowrap items-center gap-2"
@@ -844,7 +874,7 @@ const ChatRoom = () => {
           disabled={!selectedUser}
         />
 
-        {/* Display Selected Images */}
+        
         {imageFiles.length > 0 && (
           <div className="image-preview flex flex-wrap gap-2">
             {imageFiles.map((file, index) => (
@@ -854,7 +884,7 @@ const ChatRoom = () => {
       alt={`Preview ${index}`}
       className="w-24 h-24 object-cover rounded-md"
     />
-    {/* Cancel button for each image - PASS THE INDEX */}
+   
     <button
       onClick={() => handleCancel(index)}
       className="absolute top-0 right-0 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center"
@@ -866,7 +896,6 @@ const ChatRoom = () => {
           </div>
         )}
 
-        {/* Image Upload Button */}
         <div className="flex gap-2">
           <button
             type="button"
@@ -878,7 +907,7 @@ const ChatRoom = () => {
           </button>
           <input
             type="file"
-
+            multiple
             accept="image/*"
             onChange={handleImageChange}
             className="hidden"
@@ -886,7 +915,7 @@ const ChatRoom = () => {
           />
         </div>
 
-        {/* Emoji Button */}
+     
         <button
           type="button"
           onClick={() => setShowEmojiPicker((prev) => !prev)}
@@ -896,7 +925,7 @@ const ChatRoom = () => {
           😊
         </button>
 
-        {/* Send Button */}
+      
         <button
           type="submit"
           className="p-3 rounded-full bg-blue-600 hover:bg-blue-700 text-white flex items-center"
@@ -916,7 +945,7 @@ const ChatRoom = () => {
         </button>
       </form>
 
-      {/* Emoji Picker */}
+
       {showEmojiPicker && (
         <div className="absolute bottom-10 right-10 z-50 scale-90 origin-top-right">
           <EmojiPicker

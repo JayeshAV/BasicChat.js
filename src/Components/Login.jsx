@@ -28,7 +28,7 @@ const Login = () => {
                     setLoading(false); 
                      setTimeout(() => {
                       navigate("/group");
-                     }, 2000);
+                     }, 1000);
                     
                 })
                 .catch((err) => {
@@ -56,7 +56,7 @@ const Login = () => {
                     
                     setTimeout(() => {
                       navigate("/group");
-                    }, 2000);
+                    }, 1000);
                     
                 })
                 .catch((err) => {
