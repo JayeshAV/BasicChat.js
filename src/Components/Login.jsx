@@ -1,11 +1,12 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { Link, Links, useNavigate } from "react-router-dom";
-import { auth } from '../firebase.js';
+import { auth, db } from '../firebase.js';
 import { getAuth, signInWithEmailAndPassword, signInWithPopup, GoogleAuthProvider } from "firebase/auth";
 import { FacebookAuthProvider } from "firebase/auth";
 import { Eye, EyeOff } from "lucide-react";
 import { toast, ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
+import { collection, getDocs } from "firebase/firestore";
 
 
 const Login = () => {
@@ -15,27 +16,49 @@ const Login = () => {
     const [showPassword, setShowPassword] = useState(false);
     const [resetKey, setResetKey] = useState(0);
     const [loading, setLoading] = useState(false); 
+    const [users,setUsers]=useState([])
+
+
+        useEffect(() => {
+            const fetchUsers = async () => {
+              try {
+                const userSnapshot = await getDocs(collection(db, "users"));
+                const userList = [];
+                userSnapshot.forEach((doc) => {
+                  userList.push({ id: doc.id, ...doc.data() });
+                });
+                setUsers(userList);
+              } catch (error) {
+                console.error("Error fetching users:", error);
+              }
+            };
+            fetchUsers();
+          }, []);
+          console.log(users)
+
 
     const handlelogin = async (e) => {
         e.preventDefault();
         setLoading(true); 
         try {
+          
             await signInWithEmailAndPassword(auth, email, password)
-                .then(() => {
-                    setLoading(true); 
-                 
+               
+                  const isUserexist=users.find((user)=>user.email===email)
+                  if(!isUserexist) {
+                   toast.error("please sign up")
+                   setLoading(false)
+                   return
+                  }
+
+                    setLoading(true);  
                     toast.success("Login successful!");
                     setLoading(false); 
                      setTimeout(() => {
                       navigate("/group");
                      }, 1000);
-                    
-                })
-                .catch((err) => {
-                    setLoading(false); 
-                    toast.error(err.message);
-                    console.log(err);
-                });
+              
+                
             console.log(email, password);
         } catch (error) {
             setLoading(false); 
@@ -50,7 +73,14 @@ const Login = () => {
         const provider = new GoogleAuthProvider();
         try {
             await signInWithPopup(auth, provider)
-                .then(() => {
+           
+               
+                  const isUserexist=users.find((user)=>user.email===auth.currentUser.email)
+                  if(!isUserexist) {
+                     toast.error("Please Sign Up ! ")
+                    setLoading(false)
+                    return
+                  }
                     setLoading(false);
                     toast.success("Google login successful!");
                     
@@ -58,13 +88,9 @@ const Login = () => {
                       navigate("/group");
                     }, 1000);
                     
-                })
-                .catch((err) => {
-                    setLoading(false); 
-                    toast.error(err.message);
-                    console.log(err);
-                });
+               
             console.log(email, password);
+
         } catch (error) {
             setLoading(false); 
             toast.error(error.message);
@@ -162,7 +188,7 @@ const Login = () => {
     </div>
   
           <button type="submit" className="w-full bg-blue-500 hover:bg-blue-600 text-white py-3 hover:scale-[0.98] rounded-lg transition duration-200 focus:outline-none focus:ring-2 focus:ring-blue-400">
-            Sign In
+           {loading ? (<h1>signing in....</h1>):("sign in")}
           </button>
           </form>
   

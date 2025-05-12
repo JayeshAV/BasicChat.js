@@ -15,6 +15,7 @@ const SignUp = () => {
     const [showPassword, setShowPassword] = useState(false);
     const [showConfirmPassword, setShowConfirmPassword] = useState(false);
     const [users,setUsers]=useState([])
+    const [loading,setLoading]=useState(false)
 
     const navigate=useNavigate()
 
@@ -83,9 +84,9 @@ const SignUp = () => {
             uid:user.uid             
         })
         console.log("document writte id:",docref.id)
-      
+        setLoading(true)
         toast.success("User Logged in")
-
+        setLoading(false)
         setTimeout(() => {
             navigate("/group");
           }, 1000);
@@ -93,6 +94,7 @@ const SignUp = () => {
         resetForm()
 
       } catch (error) { 
+        setLoading(false)
         console.error("error adding document:",error)
         toast.error("log in error")
       }
