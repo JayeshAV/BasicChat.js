@@ -21,6 +21,7 @@ import { FilePond, registerPlugin } from 'react-filepond';
 import 'filepond/dist/filepond.min.css';
 import FilePondPluginFileValidateType from 'filepond-plugin-file-validate-type';
 import FilePondPluginFileValidateSize from 'filepond-plugin-file-validate-size';
+// import GetAiResponse from "./GetAiResponse.js";  
 
 
 registerPlugin(FilePondPluginFileValidateType, FilePondPluginFileValidateSize);
@@ -50,27 +51,11 @@ const ChatRoom = () => {
 
   const handleEmojiClick = (emojiData) => {
     setMessage((prev) => prev + emojiData.emoji);
-    setShowEmojiPicker(false);
+    // setShowEmojiPicker(false);
     inputRef.current?.focus();
   };
 
-  useEffect(() => {
-
-    const handleInputInteraction = (e) => {
-      if (inputRef.current && inputRef.current.contains(e.target) && window.innerWidth < 768) {
-        setSidebarOpen(false);
-      }
-    };
-    
-    document.addEventListener('touchstart', handleInputInteraction);
-    document.addEventListener('mousedown', handleInputInteraction);
-    
-    return () => {
-      document.removeEventListener('touchstart', handleInputInteraction);
-      document.removeEventListener('mousedown', handleInputInteraction);
-    };
-
-  }, []);
+  
 
 
   useEffect(() => {
@@ -81,21 +66,26 @@ const ChatRoom = () => {
     
     window.addEventListener('resize', handleResize);
     return () => window.removeEventListener('resize', handleResize);
+
   }, []);
 
   
   const handleScreenSizeChange = () => {
     if (window.innerWidth < 768) {
-      setSidebarOpen(!selectedUser);
+      setSidebarOpen(false); 
     } else {
-      setSidebarOpen(true);
+      setSidebarOpen(true); 
     }
-  }
+  };
+  
 
 
   useEffect(() => {
-    handleScreenSizeChange();
+    if (window.innerWidth < 768 && selectedUser) {
+      setSidebarOpen(false); 
+    }
   }, [selectedUser]);
+  
 
 
   useEffect(() => {
@@ -103,16 +93,16 @@ const ChatRoom = () => {
   }, [messages]);
 
 
-  useEffect(() => {
-    const handleClickOutside = (event) => {
-      if (emojiPickerRef.current && !emojiPickerRef.current.contains(event.target)) {
-        setShowEmojiPicker(false);
-      }
-    };
+  // useEffect(() => {
+  //   const handleClickOutside = (event) => {
+  //     if (emojiPickerRef.current && !emojiPickerRef.current.contains(event.target)) {
+  //       setShowEmojiPicker(false);
+  //     }
+  //   };
 
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, []);
+  //   document.addEventListener("mousedown", handleClickOutside);
+  //   return () => document.removeEventListener("mousedown", handleClickOutside);
+  // }, []);
 
   const getFormattedTime = () => {
     const now = new Date();
@@ -150,98 +140,122 @@ const ChatRoom = () => {
 
   const sendMessage = async (e) => {
     e.preventDefault();
+
+
     if (!auth.currentUser) {
-      console.error("User not authenticated.");
-      alert("Please log in to send a message.");
-      return;
+        console.error("User not authenticated.");
+        alert("Please log in to send a message.");
+        return;
     }
+
     if (message.trim() === "" && imageFiles.length === 0) return;
+
+   
     if (!selectedUser) {
-      alert("Please select a user to chat with first");
-      return;
+        alert("Please select a user to chat with first");
+        return;
     }
 
     setShouldSendImages(true);
 
     try {
-      const currentUserData = users.find(
-        (user) => user.email === auth.currentUser?.email
-      );
+        const currentUserData = users.find((user) => user.email === auth.currentUser?.email);
+        const displayName =
+            currentUserData?.displayName ||
+            auth.currentUser?.displayName ||
+            auth.currentUser?.email?.split("@")[0] ||
+            "Unknown User";
 
-      const displayName =
-        currentUserData?.displayName ||
-        auth.currentUser?.displayName ||
-        auth.currentUser?.email?.split("@")[0] ||
-        "Unknown User";
+        const senderId = auth.currentUser.uid;
+        const recipientUid = selectedUser.uid;
 
-      const senderId = auth.currentUser.uid;
-      const recipientUid = selectedUser.uid;
+       
+        // const isChatbot = 
+        //     recipientUid === "ai_bot_uid" || 
+        //     recipientUid === 'ai_bot_uid' ||  // Try single quotes
+        //     recipientUid.includes("ai_bot_uid") || // Check if it's part of a string
+        //     recipientUid.toString().trim() === "ai_bot_uid" || // Trim and convert to string
+        //     selectedUser.email === "ai@bot.com"; // Fallback to email check
+            
+        // console.log("Is AI Bot (new check):", isChatbot);
+        // console.log("Is chatbot?", isChatbot, "Recipient UID:", recipientUid);
+        // console.log(recipientUid)
 
-      if (!senderId) {
-        console.error("Current user has no valid UID");
-        alert(
-          "Error: Your user account is missing an ID. Please try logging out and back in."
-        );
-        return;
-      }
+        let messageData;
 
-      if (!recipientUid) {
-        console.error("Selected recipient has no valid UID:", selectedUser);
-        alert(
-          "Error: Selected recipient has no valid ID. Please try selecting another user."
-        );
-        return;
+        // if (isChatbot) {
+           
+        //     const chatbotResponse = await GetAiResponse([{ role: "user", content: message }]);
+        //     console.log(message)
+
+        //     messageData = {
+        //         text: chatbotResponse,
+        //         createdAt: serverTimestamp(),
+        //         localTimeStamp: getFormattedTime(),
+        //         uid: "chatbot", 
+        //         email: "chatbot@example.com", 
+        //         displayName: "Chatbot",
+        //         isDeleted: false,
+        //         recipientUid: "chatbot",
+        //         recipientEmail: "chatbot@example.com",
+        //         participants: [senderId, "chatbot"],
+        //         chatId: "chatbot",
+        //         images: null,
+        //     };
+        // } 
+        
+        if (!senderId || !recipientUid) {
+          console.error("Invalid sender or recipient UID");
+          alert("Error: Invalid user data.");
+          return;
       }
 
       const participants = [senderId, recipientUid];
       const chatId = participants.sort().join("_");
       const localTimeStamp = getFormattedTime();
       let base64 = null;
-      
+
       if (imageFiles.length > 0) {
-        try {
-          base64 = await convertToBase64(imageFiles[0]);
-        } catch (error) {
-          console.error("Error converting image to base64:", error);
-          console.log("Failed to process image: " + error.message);
-          base64 = null;
-        }
+          try {
+              base64 = await convertToBase64(imageFiles[0]);
+          } catch (error) {
+              console.error("Error converting image to base64:", error);
+              base64 = null;
+          }
       }
 
-      const messageData = {
-        text: message,
-        createdAt: serverTimestamp(),
-        localTimeStamp: localTimeStamp,
-        uid: senderId,
-        email: auth.currentUser.email,
-        displayName: displayName,
-        isDeleted: false,
-        recipientUid: recipientUid,
-        recipientEmail: selectedUser.email,
-        participants: participants,
-        chatId: chatId,
-        images: base64,
+      messageData = {
+          text: message,
+          createdAt: serverTimestamp(),
+          localTimeStamp: localTimeStamp,
+          uid: senderId,
+          email: auth.currentUser.email,
+          displayName: displayName,
+          isDeleted: false,
+          recipientUid: recipientUid,
+          recipientEmail: selectedUser.email,
+          participants: participants,
+          chatId: chatId,
+          images: base64,
       };
+   
 
-      await addDoc(
-        collection(db, privateChatCollectionName),
-        messageData
-      );
+  
+  await addDoc(collection(db, privateChatCollectionName), messageData);
 
-      setMessage("");
-      setImageFiles([]);
-      setShowEmojiPicker(false);
-      setShouldSendImages(false);
-      updateRecentContacts(
-        recipientUid,
-        message,
-        localTimeStamp
-      );
+ 
+  setMessage("");
+  setImageFiles([]);
+  setShowEmojiPicker(false);
+  setShouldSendImages(false);
+  updateRecentContacts(recipientUid, message, getFormattedTime());
+           
+       
     } catch (error) {
-      console.error("Error sending message:", error);
-      alert("Failed to send message: " + error.message);
+        console.error("Error sending message:", error);
+        alert("Failed to send message: " + error.message);
     }
-  };
+};
 
   const updateRecentContacts = (recipientUid, lastMessage, lastMessageTime) => {
     setRecentContacts((prevContacts) => {
@@ -278,7 +292,7 @@ const ChatRoom = () => {
     });
   };
 
-  const updateRecentContactsOnNewMessage = (
+  const  updateRecentContactsOnNewMessage = (
     recipientUid,
     displayName,
     email,
@@ -297,7 +311,7 @@ const ChatRoom = () => {
         updatedContacts.splice(existingContactIndex, 1);
         updatedContacts.unshift({
           ...existingContact,
-          lastMessage,
+          lastMessage,                                                            
           lastMessageTime,
         });
       } else {
@@ -580,7 +594,7 @@ const ChatRoom = () => {
   };
 
   const filterUsers = users.filter(
-    (user) =>
+    (user) =>                                                                     
       user.displayName?.toLowerCase().includes(searchQuery.toLowerCase()) ||
       user.email?.split("@")[0].toLowerCase().includes(searchQuery.toLowerCase())
   );
@@ -594,14 +608,17 @@ const ChatRoom = () => {
       setSidebarOpen(true);
       setSelectedUser(null);
     }
-  };
+  };                                                                                                                                                            
   
   return (
     <div className="flex h-screen bg-[#131c2e] overflow-hidden">
       
       {windowWidth < 768 && selectedUser && (
         <button 
-          onClick={toggleSidebar} 
+        onClick={(e) => {
+          e.stopPropagation(); 
+          toggleSidebar();
+        }}
           className="fixed top-3  left-2 z-30 bg-blue-600 p-2 rounded-md shadow-lg"
         >
           <FaBars className="text-white" />
@@ -780,9 +797,12 @@ const ChatRoom = () => {
         className={`${
           (!sidebarOpen || windowWidth >= 768) ? 'flex-1' : 'hidden md:block md:flex-1'
         } flex flex-col bg-[#131c2e] text-white`}
+        onClick={(e) => e.stopPropagation()}
+        onTouchStart={(e) => e.stopPropagation()}
       >
         {/* Chat header */}
-        <div className="bg-[#1a2436] p-3 md:p-5 shadow-md flex items-center justify-between">
+        <div className="bg-[#1a2436] p-3 md:p-5 shadow-md flex items-center justify-between" onClick={(e) => e.stopPropagation()}
+  onTouchStart={(e) => e.stopPropagation()}>
           <div className="flex items-center flex-1">
             {windowWidth < 768 && selectedUser && (
               <button 
@@ -805,7 +825,7 @@ const ChatRoom = () => {
                   <span className="truncate max-w-[150px] md:max-w-[250px]">
                     {selectedUser.displayName ||
                       selectedUser.email?.split("@")[0] ||
-                      "Unknown User"}
+                      "Unknown User"} 
                   </span>
                 </div>
               ) : (
@@ -944,7 +964,7 @@ const ChatRoom = () => {
           )}
         </div>
   
-        {/* Message input */}
+        
         {selectedUser && (
           <div className="p-2 bg-[#1a2436] border-t border-gray-700">
             {imageFiles.length > 0 && (
@@ -970,14 +990,20 @@ const ChatRoom = () => {
             <form onSubmit={sendMessage} className="flex items-center gap-2">
               <div className="relative flex-1">
                 <input
-                
                   type="text"
                   placeholder="Type a message..."
                   className="w-full p-3 pr-10 bg-gray-700 text-white rounded-full outline-none focus:ring-2 focus:ring-blue-500"
                   value={message}
                   onChange={(e) => setMessage(e.target.value)}
                   disabled={!selectedUser}
+                  onTouchStart={(e) => {
+                    e.stopPropagation();
+                  }}
+                  onClick={(e) => e.stopPropagation()} 
+                  onFocus={(e) => e.stopPropagation()} 
+                  
                 />
+             
                 <button
                   type="button"
                   onClick={() => setShowEmojiPicker(!showEmojiPicker)}
@@ -1002,12 +1028,7 @@ const ChatRoom = () => {
                 onChange={handleImageChange}
                 className="hidden"
                 ref={imageInputRef}
-                onFocus={(e) => {
-                  e.stopPropagation();
-                  if (window.innerWidth < 768) {
-                    setSidebarOpen(false);
-                  }
-                }}
+               
                 multiple
               />
               
