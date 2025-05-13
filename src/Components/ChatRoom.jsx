@@ -951,7 +951,7 @@ const ChatRoom = () => {
             <form onSubmit={sendMessage} className="flex items-center gap-2">
               <div className="relative flex-1">
                 <input
-                  ref={inputRef}
+                
                   type="text"
                   placeholder="Type a message..."
                   className="w-full p-3 pr-10 bg-gray-700 text-white rounded-full outline-none focus:ring-2 focus:ring-blue-500"
