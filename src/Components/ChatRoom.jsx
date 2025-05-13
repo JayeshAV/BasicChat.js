@@ -14,7 +14,7 @@ import {
   where,
   getDoc,
 } from "firebase/firestore";
-import { FaSignOutAlt, FaTrashAlt, FaArrowLeft, FaSearch, FaClock, FaUsers, FaImage } from "react-icons/fa";
+import { FaSignOutAlt, FaTrashAlt, FaArrowLeft, FaSearch, FaClock, FaUsers, FaImage, FaSmile, FaBars, FaTimes } from "react-icons/fa";
 import { useNavigate } from "react-router-dom";
 import EmojiPicker from "emoji-picker-react";
 import { FilePond, registerPlugin } from 'react-filepond';
@@ -26,6 +26,7 @@ import FilePondPluginFileValidateSize from 'filepond-plugin-file-validate-size';
 registerPlugin(FilePondPluginFileValidateType, FilePondPluginFileValidateSize);
 
 const ChatRoom = () => {
+
   const [message, setMessage] = useState("");
   const [messages, setMessages] = useState([]);
   const [users, setUsers] = useState([]);
@@ -42,15 +43,57 @@ const ChatRoom = () => {
   const imageInputRef = useRef(null);
   const [files, setFiles] = useState([]);
   const [shouldSendImages, setShouldSendImages] = useState(false);
-
+  const [sidebarOpen, setSidebarOpen] = useState(true);
+  const inputRef = useRef(null);
+  const [windowWidth, setWindowWidth] = useState(window.innerWidth);
+  const emojiPickerRef = useRef(null);
 
   const handleEmojiClick = (emojiData) => {
     setMessage((prev) => prev + emojiData.emoji);
+    setShowEmojiPicker(false);
+    inputRef.current?.focus();
   };
+
+  useEffect(() => {
+    const handleResize = () => {
+      setWindowWidth(window.innerWidth);
+      handleScreenSizeChange();
+    };
+    
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
+  
+  const handleScreenSizeChange = () => {
+    if (window.innerWidth < 768) {
+      setSidebarOpen(!selectedUser);
+    } else {
+      setSidebarOpen(true);
+    }
+  }
+
+
+  useEffect(() => {
+    handleScreenSizeChange();
+  }, [selectedUser]);
+
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
+
+
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (emojiPickerRef.current && !emojiPickerRef.current.contains(event.target)) {
+        setShowEmojiPicker(false);
+      }
+    };
+
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
 
   const getFormattedTime = () => {
     const now = new Date();
@@ -69,7 +112,6 @@ const ChatRoom = () => {
   const handleCancel = (indexToRemove) => {
     setImageFiles((prevFiles) => {
       const updatedFiles = prevFiles.filter((_, index) => index !== indexToRemove);
-      console.log("Updated imageFiles after cancel:", updatedFiles); 
       return updatedFiles;
     });
   };
@@ -87,8 +129,6 @@ const ChatRoom = () => {
     });
   };
 
-
-
   const sendMessage = async (e) => {
     e.preventDefault();
     if (!auth.currentUser) {
@@ -99,11 +139,10 @@ const ChatRoom = () => {
     if (message.trim() === "" && imageFiles.length === 0) return;
     if (!selectedUser) {
       alert("Please select a user to chat with first");
-      return
+      return;
     }
 
-    console.log("imageFiles before send:", imageFiles); 
-  setShouldSendImages(true); 
+    setShouldSendImages(true);
 
     try {
       const currentUserData = users.find(
@@ -138,18 +177,15 @@ const ChatRoom = () => {
       const participants = [senderId, recipientUid];
       const chatId = participants.sort().join("_");
       const localTimeStamp = getFormattedTime();
-      const base64Images = [];
-
+      let base64 = null;
+      
       if (imageFiles.length > 0) {
-        for (const file of imageFiles) {
-          try {
-            const base64 = await convertToBase64(file);
-            base64Images.push(base64);
-          } catch (error) {
-            console.error("Error converting image to base64:", error);
-            console.log("Failed to process image: " + error.message);
-            return; 
-          }
+        try {
+          base64 = await convertToBase64(imageFiles[0]);
+        } catch (error) {
+          console.error("Error converting image to base64:", error);
+          console.log("Failed to process image: " + error.message);
+          base64 = null;
         }
       }
 
@@ -165,7 +201,7 @@ const ChatRoom = () => {
         recipientEmail: selectedUser.email,
         participants: participants,
         chatId: chatId,
-        images: base64Images,
+        images: base64,
       };
 
       await addDoc(
@@ -174,21 +210,19 @@ const ChatRoom = () => {
       );
 
       setMessage("");
-      setImageFiles([]); 
-      setShowEmojiPicker(false)
-      setShouldSendImages(false); 
-      console.log("imageFiles after send:", []); 
+      setImageFiles([]);
+      setShowEmojiPicker(false);
+      setShouldSendImages(false);
       updateRecentContacts(
         recipientUid,
-        message || (base64Images.length > 0 ? "Sent images" : ""),
+        message,
         localTimeStamp
       );
     } catch (error) {
-      console.error("Error sending message:", error); 
+      console.error("Error sending message:", error);
       alert("Failed to send message: " + error.message);
     }
   };
-
 
   const updateRecentContacts = (recipientUid, lastMessage, lastMessageTime) => {
     setRecentContacts((prevContacts) => {
@@ -225,7 +259,6 @@ const ChatRoom = () => {
     });
   };
 
-
   const updateRecentContactsOnNewMessage = (
     recipientUid,
     displayName,
@@ -248,9 +281,7 @@ const ChatRoom = () => {
           lastMessage,
           lastMessageTime,
         });
-
       } else {
-
         updatedContacts.unshift({
           uid: recipientUid,
           displayName: displayName,
@@ -258,7 +289,6 @@ const ChatRoom = () => {
           lastMessage: lastMessage,
           lastMessageTime: lastMessageTime,
         });
-
       }
 
       return [...updatedContacts].sort((a, b) =>
@@ -299,7 +329,6 @@ const ChatRoom = () => {
     return () => unsubscribe();
   }, [auth, selectedUser]);
 
-
   useEffect(() => {
     if (!auth.currentUser) return;
 
@@ -322,8 +351,7 @@ const ChatRoom = () => {
             const chatMessagesQuery = query(
               collection(db, privateChatCollectionName),
               where("chatId", "==", chatId),
-              orderBy("createdAt", "desc"), // Latest first
-              // limit(1), // Get only the latest message
+              orderBy("createdAt", "desc"),
             );
 
             const chatMessagesSnapshot = await getDocs(chatMessagesQuery);
@@ -366,7 +394,6 @@ const ChatRoom = () => {
     return () => unsubscribe();
   }, [auth.currentUser, users]);
 
-  
   useEffect(() => {
     if (!auth.currentUser) return;
 
@@ -375,18 +402,13 @@ const ChatRoom = () => {
     const unsubscribe = onSnapshot(
       collection(db, privateChatCollectionName),
       (snapshot) => {
-        console.log(snapshot)
-
         snapshot.docChanges().forEach((change) => {
           if (change.type === "added") {
-
             const newMessage = change.doc.data();
 
             if (newMessage.participants.includes(currentUserId)) {
-
               const otherUserId = newMessage.participants.find(
                 (uid) => uid !== currentUserId
-
               );
 
               let lastMessageText = newMessage.text;
@@ -398,7 +420,7 @@ const ChatRoom = () => {
               const otherUser = users.find((user) => user.uid === otherUserId);
               if (otherUser) {
                 updateRecentContactsOnNewMessage(
-                  otherUser.uid,    
+                  otherUser.uid,
                   otherUser.displayName,
                   otherUser.email,
                   lastMessageText,
@@ -416,7 +438,6 @@ const ChatRoom = () => {
 
     return () => unsubscribe();
   }, [auth.currentUser, users]);
-
 
   useEffect(() => {
     const fetchUsers = async () => {
@@ -439,9 +460,7 @@ const ChatRoom = () => {
     fetchUsers();
   }, []);
 
-
   const deleteMessage = async (id) => {
-
     try {
       const chatRef = doc(db, 'privateChats', id);
       const docSnapshot = await getDoc(chatRef);
@@ -458,8 +477,8 @@ const ChatRoom = () => {
       if (confirmDelete) {
         await updateDoc(chatRef, {
           isDeleted: true,
-          text: "This message was deleted.", 
-          images: [], 
+          text: "This message was deleted.",
+          images: [],
         });
         console.log("Chat marked as deleted!");
       }
@@ -468,7 +487,6 @@ const ChatRoom = () => {
     }
   };
 
-
   const handleLogout = () => {
     const confirmLogout = window.confirm("Are you sure you want to logout?");
     if (confirmLogout) {
@@ -476,7 +494,6 @@ const ChatRoom = () => {
       navigate("/");
     }
   };
-
 
   const handleUserSelect = (user) => {
     if (user.uid === auth.currentUser?.uid) {
@@ -491,13 +508,20 @@ const ChatRoom = () => {
     setSelectedUser(selectedUserWithUid);
     setSearchQuery("");
     setShowSearchInput(false);
+    
+   
+    if (window.innerWidth < 768) {
+      setSidebarOpen(false);
+    }
   };
 
+  const toggleSidebar = () => {
+    setSidebarOpen(!sidebarOpen);
+  };
 
   const currentUserDetails = users.find(
     (user) => user.email === auth?.currentUser?.email
   );
-
 
   const getSenderDisplayName = (msg) => {
     const msgUser = users.find(
@@ -508,7 +532,6 @@ const ChatRoom = () => {
     }
     return msg.displayName || msg.email?.split("@")[0] || "Unknown User";
   };
-
 
   const getSenderInitial = (msg) => {
     if (msg.uid !== auth.currentUser?.uid) {
@@ -528,17 +551,14 @@ const ChatRoom = () => {
     return currentName.charAt(0).toUpperCase();
   };
 
-
   const handleSearchBtn = () => {
     setShowSearchInput(!showSearchInput);
   };
-
 
   const handleClose = () => {
     setSearchQuery("");
     setShowSearchInput(false);
   };
-
 
   const filterUsers = users.filter(
     (user) =>
@@ -546,419 +566,454 @@ const ChatRoom = () => {
       user.email?.split("@")[0].toLowerCase().includes(searchQuery.toLowerCase())
   );
 
-
   const toggleViewMode = (mode) => {
     setViewMode(mode);
   };
 
-
+  const backToContacts = () => {
+    if (window.innerWidth < 768) {
+      setSidebarOpen(true);
+      setSelectedUser(null);
+    }
+  };
   
   return (
-    <>
-      <div className="flex h-screen">
-        <div className="w-full md:w-80 bg-[#1A2436] border-r border-gray-700 overflow-y-auto   xl:block">
-          <div className="bg-[#1a2436] p-4 shadow-md flex items-center justify-between sticky top-0 z-10">
-            <h2 className="text-xl text-white font-bold">Chat</h2>
-            <div className="flex gap-2">
-              <button
-                className={`p-2 rounded-lg ${
-                  viewMode === "recent" ? "bg-blue-600" : "bg-gray-700"
-                }`}
-                onClick={() => toggleViewMode("recent")}
-                title="Recent Chats"
-              >
-                <FaClock className="text-white" />
-              </button>
-              <button
-                className={`p-2 rounded-lg ${
-                  viewMode === "all" ? "bg-blue-600" : "bg-gray-700"
-                }`}
-                onClick={() => toggleViewMode("all")}
-                title="All Users"
-              >
-                <FaUsers className="text-white" />
-              </button>
-              <button
-                className="bg-blue-500 text-white p-2 rounded-lg"
-                onClick={handleSearchBtn}
-              >
-                <FaSearch />
+    <div className="flex h-screen bg-[#131c2e] overflow-hidden">
+      
+      {windowWidth < 768 && selectedUser && (
+        <button 
+          onClick={toggleSidebar} 
+          className="fixed top-4 left-2 z-30 bg-blue-600 p-2 rounded-md shadow-lg"
+        >
+          <FaBars className="text-white" />
+        </button>
+      )}
+  
+      
+      <div 
+        className={`${
+          sidebarOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'
+        } w-full md:w-80 bg-[#1A2436] border-r border-gray-700 flex-shrink-0 
+        md:static fixed top-0 left-0 h-full z-20 transition-all duration-300 ease-in-out`}
+      >
+        <div className="bg-[#1a2436] p-4 shadow-md flex items-center justify-between sticky top-0 z-10">
+          <h2 className="text-xl text-white font-bold text-center m-auto">Chat</h2>
+          <div className="flex gap-2">
+            <button
+              className={`p-2 rounded-lg ${
+                viewMode === "recent" ? "bg-blue-600" : "bg-gray-700"
+              }`}
+              onClick={() => toggleViewMode("recent")}
+              title="Recent Chats"
+            >
+              <FaClock className="text-white" />
+            </button>
+            <button
+              className={`p-2 rounded-lg ${
+                viewMode === "all" ? "bg-blue-600" : "bg-gray-700"
+              }`}
+              onClick={() => toggleViewMode("all")}
+              title="All Users"
+            >
+              <FaUsers className="text-white" />
+            </button>
+            <button
+              className="bg-blue-500 text-white p-2 rounded-lg"
+              onClick={handleSearchBtn}
+            >
+              <FaSearch />
+            </button>
+          </div>
+        </div>
+  
+        {showSearchInput && (
+          <div className="p-4">
+            <div className="flex">
+              <input
+                type="text"
+                placeholder="Search Users..."
+                className="w-full p-2 bg-gray-700 text-white rounded-lg outline-none"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+              />
+              <button onClick={handleClose} className="ms-2">
+                <FaTimes className="text-gray-200 text-xl" />
               </button>
             </div>
           </div>
-
-          {showSearchInput && (
-            <div className="p-4">
-              <div className="flex">
-                <input
-                  type="text"
-                  placeholder="Search Users..."
-                  className="w-full p-2 bg-gray-700 text-white rounded-lg outline-none"
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                />
-                <button onClick={handleClose} className="ms-2">
-                  <i className="fa-solid fa-xmark text-gray-200 text-xl"></i>
-                </button>
-              </div>
-            </div>
-          )}
-
-          <div className="pt-2">
-            {searchQuery &&
-              filterUsers
-                .filter((user) => user.uid !== auth.currentUser?.uid)
-                .map((user) => (
-                  <div
-                    key={user.uid}
-                    className={`mb-2 cursor-pointer ${
-                      selectedUser?.uid === user.uid
-                        ? "border-l-4 border-blue-500 bg-gray-700"
-                        : ""
-                    }`}
-                    onClick={() => handleUserSelect(user)}
-                  >
-                    <h1 className="text-white text-xl bg-gray-700 py-2 rounded-xl m-1 ps-2 flex items-center">
-                      <span className="p-2 rounded-full px-4 bg-blue-500 me-4">
-                        {(
-                          user.displayName?.charAt(0) ||
-                          user.email?.charAt(0) ||
-                          "U"
-                        ).toUpperCase()}
-                      </span>
+        )}
+  
+        <div className="pt-2 h-[calc(100%-60px)] overflow-y-auto">
+          {searchQuery &&
+            filterUsers
+              .filter((user) => user.uid !== auth.currentUser?.uid)
+              .map((user) => (
+                <div
+                  key={user.uid}
+                  className={`mb-2 cursor-pointer ${
+                    selectedUser?.uid === user.uid
+                      ? "border-l-4 border-blue-500 bg-gray-700"
+                      : ""
+                  }`}
+                  onClick={() => handleUserSelect(user)}
+                >
+                  <div className="text-white bg-gray-700 py-2 rounded-xl m-1 ps-2 flex items-center">
+                    <span className="p-2 rounded-full px-4 bg-blue-500 me-4 flex-shrink-0">
+                      {(
+                        user.displayName?.charAt(0) ||
+                        user.email?.charAt(0) ||
+                        "U"
+                      ).toUpperCase()}
+                    </span>
+                    <span className="truncate">
                       {user.displayName ||
                         user.email?.split("@")[0] ||
                         "Unknown User"}
-                    </h1>
+                    </span>
                   </div>
-                ))}
-
-            {!searchQuery && viewMode === "recent" && (
-              <>
-                <h3 className="text-gray-400 text-sm font-medium px-4 py-2">
-                  RECENT CHATS
-                </h3>
-                {recentContacts.length > 0 ? (
-                  recentContacts.map((contact) => (
+                </div>
+              ))}
+  
+          {!searchQuery && viewMode === "recent" && (
+            <>
+              <h3 className="text-gray-400 text-sm font-medium px-4 py-2">
+                RECENT CHATS
+              </h3>
+              {recentContacts.length > 0 ? (
+                recentContacts.map((contact) => (
+                  <div
+                    key={contact.uid}
+                    className={`mb-2 cursor-pointer ${
+                      selectedUser?.uid === contact.uid
+                        ? "border-l-4 border-blue-500 bg-gray-700"
+                        : ""
+                    }`}
+                    onClick={() => handleUserSelect(contact)}
+                  >
+                    <div className="text-white bg-gray-700 hover:bg-gray-600 py-2 rounded-xl m-1 ps-2 flex items-center">
+                      <span className="p-2 rounded-full px-4 bg-blue-500 me-4 flex-shrink-0">
+                        {(contact.displayName?.charAt(0) || "U").toUpperCase()}
+                      </span>
+                      <div className="flex-1 overflow-hidden">
+                        <h3 className="font-medium truncate">{contact.displayName}</h3>
+                        <p className="text-gray-400 text-sm truncate">
+                          {contact.lastMessage || "Start a conversation"}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                ))
+              ) : (
+                <div className="text-center text-gray-400 p-4">
+                  No recent conversations found
+                </div>
+              )}
+            </>
+          )}
+  
+          {!searchQuery && viewMode === "all" && (
+            <>
+              <h3 className="text-gray-400 text-sm font-medium px-4 py-2">
+                ALL USERS
+              </h3>
+              {users.filter((user) => user.uid !== auth.currentUser?.uid)
+                .length > 0 ? (
+                users
+                  .filter((user) => user.uid !== auth.currentUser?.uid)
+                  .map((user) => (
                     <div
-                      key={contact.uid}
+                      key={user.uid}
                       className={`mb-2 cursor-pointer ${
-                        selectedUser?.uid === contact.uid
+                        selectedUser?.uid === user.uid
                           ? "border-l-4 border-blue-500 bg-gray-700"
                           : ""
                       }`}
-                      onClick={() => handleUserSelect(contact)}
+                      onClick={() => handleUserSelect(user)}
                     >
                       <div className="text-white bg-gray-700 hover:bg-gray-600 py-2 rounded-xl m-1 ps-2 flex items-center">
-                        <span className="p-2 rounded-full px-4 bg-blue-500 me-4">
-                          {(contact.displayName?.charAt(0) || "U").toUpperCase()}
+                        <span className="p-2 rounded-full px-4 bg-blue-500 me-4 flex-shrink-0">
+                          {(
+                            user.displayName?.charAt(0) ||
+                            user.email?.charAt(0) ||
+                            "U"
+                          ).toUpperCase()}
                         </span>
-                        <div className="flex-1 overflow-hidden">
-                          <h3 className="font-medium">{contact.displayName}</h3>
-                          <p className="text-gray-400 text-sm truncate">
-                            {contact.lastMessage || "Start a conversation"}
-                          </p>
-                        </div>
-                      </div>
-                    </div>
-                  ))
-                ) : (
-                  <div className="text-center text-gray-400 p-4">
-                    No recent conversations found
-                  </div>
-                )}
-              </>
-            )}
-
-            {!searchQuery && viewMode === "all" && (
-              <>
-                <h3 className="text-gray-400 text-sm font-medium px-4 py-2">
-                  ALL USERS
-                </h3>
-                {users.filter((user) => user.uid !== auth.currentUser?.uid)
-                  .length > 0 ? (
-                  users
-                    .filter((user) => user.uid !== auth.currentUser?.uid)
-                    .map((user) => (
-                      <div
-                        key={user.uid}
-                        className={`mb-2 cursor-pointer ${
-                          selectedUser?.uid === user.uid
-                            ? "border-l-4 border-blue-500 bg-gray-700"
-                            : ""
-                        }`}
-                        onClick={() => handleUserSelect(user)}
-                      >
-                        <h1 className="text-white text-xl bg-gray-700 hover:bg-gray-600 py-2 rounded-xl m-1 ps-2 flex items-center">
-                          <span className="p-2 rounded-full px-4 bg-blue-500 me-4">
-                            {(
-                              user.displayName?.charAt(0) ||
-                              user.email?.charAt(0) ||
-                              "U"
-                            ).toUpperCase()}
-                          </span>
+                        <span className="truncate">
                           {user.displayName ||
                             user.email?.split("@")[0] ||
                             "Unknown User"}
-                        </h1>
+                        </span>
                       </div>
-                    ))
-                ) : (
-                  <div className="text-center text-gray-400 p-4">
-                    No other users found
-                  </div>
-                )}
-              </>
-            )}
-
-            {!searchQuery && viewMode !== "recent" && viewMode !== "all" && (
-              <div className="text-center text-gray-400 p-4">
-                Select view mode to see users
-              </div>
-            )}
-          </div>
+                    </div>
+                  ))
+              ) : (
+                <div className="text-center text-gray-400 p-4">
+                  No other users found
+                </div>
+              )}
+            </>
+          )}
         </div>
-
-        <div className="flex-1 flex flex-col bg-[#131c2e] text-white">
-          <div className="bg-[#1a2436] p-5 shadow-md flex items-center justify-between">
-            <h2 className="text-xl font-bold flex-1">
+      </div>
+  
+      {/* Chat area */}
+      <div 
+        className={`${
+          (!sidebarOpen || windowWidth >= 768) ? 'flex-1' : 'hidden md:block md:flex-1'
+        } flex flex-col bg-[#131c2e] text-white`}
+      >
+        {/* Chat header */}
+        <div className="bg-[#1a2436] p-3 md:p-5 shadow-md flex items-center justify-between">
+          <div className="flex items-center flex-1">
+            {windowWidth < 768 && selectedUser && (
+              <button 
+                onClick={backToContacts}
+                className="text-white p-2 mr-2"
+              >
+                <FaArrowLeft />
+              </button>
+            )}
+            <h2 className="text-lg md:text-xl font-bold truncate">
               {selectedUser ? (
                 <div className="flex items-center">
-                  <span className="h-8 w-8 rounded-full bg-blue-500 flex items-center justify-center text-white font-bold mr-2">
+                  <span className="h-8 w-8 rounded-full bg-blue-500 flex items-center justify-center text-white font-bold mr-2 flex-shrink-0">
                     {(
                       selectedUser.displayName?.charAt(0) ||
                       selectedUser.email?.charAt(0) ||
                       "U"
                     ).toUpperCase()}
                   </span>
-                  <span>
+                  <span className="truncate max-w-[150px] md:max-w-[250px]">
                     {selectedUser.displayName ||
                       selectedUser.email?.split("@")[0] ||
                       "Unknown User"}
                   </span>
                 </div>
               ) : (
-                <>
-                  Select a user to start chatting{" "}
-                  {currentUserDetails
-                    ? `(Logged in as: ${
-                        currentUserDetails.displayName ||
-                        auth.currentUser?.displayName ||
-                        "Unknown"
-                      })`
-                    : ""}
-                </>
+                <span className="truncate">
+                  Select a user to start chatting
+                </span>
               )}
             </h2>
-            <div className="flex">
-              <h1 className="pe-3">{currentUserDetails?.displayName}</h1>
-              <button
-                onClick={handleLogout}
-                className="rounded-full text-white hover:text-red-400"
-              >
-                <FaSignOutAlt className="h-5 w-5" />
-              </button>
-            </div>
           </div>
-
-          <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-[#0f172a] text-white pt-10">
+          <div className="flex items-center">
+            <h1 className="pe-3 hidden md:block truncate max-w-[150px]">{currentUserDetails?.displayName}</h1>
+            <button
+              onClick={handleLogout}
+              className="rounded-full text-white hover:text-red-400"
+            >
+              <FaSignOutAlt className="h-5 w-5" />
+            </button>
+          </div>
+        </div>
+  
+        {/* Messages area */}
+        <div className="flex-1 overflow-y-auto p-2 md:p-4 space-y-4 bg-[#0f172a] text-white">
           {messages.length === 0 ? (
-              <div className="mb-20 flex flex-col items-center">
-                <div className="relative w-24 h-24 rounded-full flex items-center justify-center shadow-inner opacity-100 bg-gradient-to-br from-blue-100 to-blue-600 shadow-md">
-                  <p className="text-white text-6xl font-semibold">
-                    {selectedUser?.displayName?.[0]?.toUpperCase() || "?"}
-                  </p>
-                </div>
-                <p className="mt-3 text-center text-xl font-semibold text-gray-300 tracking-wide">
-                  {selectedUser?.displayName?.toUpperCase() || "SELECT A USER"}
-                </p>
-                <p className="text-gray-600 pt-3">
-                  {selectedUser
-                    ? `No messages yet. Say hello to ${
-                        selectedUser?.displayName
-                      }!`
-                    : "Select a user to begin chatting"}
+            <div className="h-full flex flex-col items-center justify-center">
+              <div className="relative w-16 h-16 md:w-24 md:h-24 rounded-full flex items-center justify-center shadow-inner opacity-100 bg-gradient-to-br from-blue-100 to-blue-600 shadow-md">
+                <p className="text-white text-4xl md:text-6xl font-semibold">
+                  {selectedUser?.displayName?.[0]?.toUpperCase() || "?"}
                 </p>
               </div>
-            ) : (
-              messages.map((msg) => {
+              <p className="mt-3 text-center text-lg md:text-xl font-semibold text-gray-300 tracking-wide">
+                {selectedUser?.displayName?.toUpperCase() || "SELECT A USER"}
+              </p>
+              <p className="text-gray-600 pt-3 text-center px-4">
+                {selectedUser
+                  ? `No messages yet. Say hello to ${
+                      selectedUser?.displayName || selectedUser?.email?.split("@")[0] || "them"
+                    }!`
+                  : "Select a user to begin chatting"}
+              </p>
+            </div>
+          ) : (
+            <div className="space-y-3 pb-2">
+              {messages.map((msg) => {
                 const senderName = getSenderDisplayName(msg);
-                const initial = senderName?.charAt(0).toUpperCase();
+                const initial = getSenderInitial(msg);
                 const isCurrentUser = msg.uid === auth.currentUser?.uid;
                 const currentDocId = msg?.id;
                 const messageTime = msg.localTimeStamp;
-
+  
                 return (
                   <div
                     key={msg.id}
-                    className={`flex items-start gap-2 mb-3 ${
+                    className={`flex items-start gap-2 ${
                       isCurrentUser ? "justify-end" : "justify-start"
                     }`}
                   >
                     {!isCurrentUser && (
-                      <div className="w-10 h-10 rounded-full bg-white text-black font-bold flex items-center justify-center">
+                      <div className="w-8 h-8 md:w-10 md:h-10 rounded-full bg-blue-500 text-white font-bold flex items-center justify-center flex-shrink-0">
                         {initial}
                       </div>
                     )}
-
+                    
                     <div
-                      className={`p-3 rounded-lg max-w-[70%] ${
+                      className={`relative max-w-[75%] md:max-w-[70%] rounded-lg py-2 px-3 shadow ${
                         isCurrentUser
-                          ? "bg-blue-600 text-white ml-auto"
-                          : "bg-gray-800 text-white"
+                          ? "bg-gray-800 rounded-tr-none"
+                          : "bg-gray-600 rounded-tl-none"
                       }`}
                     >
-                      <div className="text-sm flex flex-col">
-                        {msg.isDeleted ? (
-                          <em className="text-gray-400 italic">
-                            This message was deleted.
-                          </em>
-                        ) : (
-                          <>
-                            {msg.text && <span>{msg.text}</span>}
-                            {msg.images &&
-                              msg.images.map((imageUrl, index) => (
-                                <img
-                                  key={index}
-                                  src={imageUrl}
-                                  alt={`Image ${index + 1}`}
-                                  className="mt-2 rounded-md max-h-60 mb-2" 
-                                />
-                              ))}
-                          </>
-                        )}
-                        {isCurrentUser && !msg.isDeleted && (
-                          <button
-                            onClick={() => deleteMessage(currentDocId)}
-                            className="ml-2 text-sm text-red-300 hover:text-red-500 self-end"
-                          >
-                            <FaTrashAlt />
-                          </button>
-                        )}
+                      {!isCurrentUser && (
+                        <div className="text-sm text-blue-300 font-semibold mb-1">
+                          {senderName}
+                        </div>
+                      )}
+                      
+                      {msg.isDeleted ? (
+                        <p className="text-gray-400 italic text-sm">
+                          {msg.text}
+                        </p>
+                      ) : (
+                        <>
+                          <p className="text-white break-words">{msg.text}</p>
+                          
+                          {msg.images && msg.images && (
+                            <div className="mt-2 rounded-lg overflow-hidden">
+                              <img
+                                src={msg.images}
+                                alt="Sent image"
+                                className="max-w-full h-auto rounded-lg"
+                              />
+                            </div>
+                          )}
+                          
+                          <div className="flex justify-between items-center mt-1">
+                            <span className="text-xs text-gray-400">
+                              {messageTime}
+                            </span>
+                            
+                            {isCurrentUser && !msg.isDeleted && (
+                              <button
+                                onClick={() => deleteMessage(currentDocId)}
+                                className="text-gray-400 hover:text-red-500 ml-2"
+                                title="Delete message"
+                              >
+                                <FaTrashAlt size={12} />
+                              </button>
+                            )}
+                          </div>
+                        </>
+                      )}
+                      
+                      {/* Message tail */}
+                      <div
+                        className={`absolute top-0 w-4 h-4 overflow-hidden ${
+                          isCurrentUser ? "right-0 transform translate-x-1/2 -translate-y-1/2" : "left-0 transform -translate-x-1/2 -translate-y-1/2"
+                        }`}
+                      >
+                        <div
+                          className={`absolute transform rotate-45 w-4 h-4 ${
+                            isCurrentUser ? "bg-[#065f46]" : "bg-[#1f2937]"
+                          }`}
+                        ></div>
                       </div>
-                      <span className="text-xs text-gray-300 mt-1 block">
-                        {senderName}
-                      </span>
-                      <span className="text-xs text-gray-400">{messageTime}</span>
                     </div>
-
+                    
                     {isCurrentUser && (
-                      <div className="w-10 h-10 rounded-full bg-white text-black font-bold flex items-center justify-center">
+                      <div className="w-8 h-8 md:w-10 md:h-10 rounded-full bg-blue-500 text-white font-bold flex items-center justify-center flex-shrink-0">
                         {initial}
                       </div>
                     )}
                   </div>
                 );
-              })
+              })}
+              <div ref={messagesEndRef} />
+            </div>
+          )}
+        </div>
+  
+        {/* Message input */}
+        {selectedUser && (
+          <div className="p-2 bg-[#1a2436] border-t border-gray-700">
+            {imageFiles.length > 0 && (
+              <div className="flex flex-wrap gap-2 mb-2 p-2 bg-gray-800 rounded-lg">
+                {imageFiles.map((file, index) => (
+                  <div key={index} className="relative inline-block">
+                    <img
+                      src={URL.createObjectURL(file)}
+                      alt={`Preview ${index}`}
+                      className="h-16 w-16 object-cover rounded-md"
+                    />
+                    <button
+                      onClick={() => handleCancel(index)}
+                      className="absolute -top-2 -right-2 bg-red-500 rounded-full p-1 text-white"
+                    >
+                      <FaTimes size={10} />
+                    </button>
+                  </div>
+                ))}
+              </div>
             )}
-            <div ref={messagesEndRef} />
-          </div>
-
-          <div className="p-4 bg-[#1a2436] border-t border-gray-700 relative">
             
-      <form
-        onSubmit={sendMessage}
-        className="flex flex-wrap md:flex-nowrap items-center gap-2"
-      >
-        <input
-          className="flex-1 p-3 rounded-full bg-[#131c2e] text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 min-w-[150px]"
-          value={message}
-          onChange={(e) => setMessage(e.target.value)}
-          placeholder={
-            selectedUser
-              ? `Message ${
-                  selectedUser.displayName || selectedUser.email?.split("@")[0]
-                }...`
-              : "Select a user to start chatting..."
-          }
-          disabled={!selectedUser}
-        />
-
-        
-        {imageFiles.length > 0 && (
-          <div className="image-preview flex flex-wrap gap-2">
-            {imageFiles.map((file, index) => (
-  <div key={index} className="relative">
-    <img
-      src={URL.createObjectURL(file)}
-      alt={`Preview ${index}`}
-      className="w-24 h-24 object-cover rounded-md"
-    />
-   
-    <button
-      onClick={() => handleCancel(index)}
-      className="absolute top-0 right-0 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center"
-    >
-      &times;
-    </button>
-  </div>
-))}
+            <form onSubmit={sendMessage} className="flex items-center gap-2">
+              <div className="relative flex-1">
+                <input
+                  ref={inputRef}
+                  type="text"
+                  placeholder="Type a message..."
+                  className="w-full p-3 pr-10 bg-gray-700 text-white rounded-full outline-none focus:ring-2 focus:ring-blue-500"
+                  value={message}
+                  onChange={(e) => setMessage(e.target.value)}
+                  disabled={!selectedUser}
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowEmojiPicker(!showEmojiPicker)}
+                  className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400"
+                >
+                  <FaSmile />
+                </button>
+                
+                {showEmojiPicker && (
+                  <div 
+                    ref={emojiPickerRef}
+                    className="absolute bottom-full right-0 mb-2 z-10"
+                  >
+                    <EmojiPicker onEmojiClick={handleEmojiClick} />
+                  </div>
+                )}
+              </div>
+              
+              <input
+                type="file"
+                accept="image/*"
+                onChange={handleImageChange}
+                className="hidden"
+                ref={imageInputRef}
+                multiple
+              />
+              
+              <button
+                type="button"
+                onClick={triggerImageUpload}
+                className="p-3 bg-gray-700 text-white rounded-full hover:bg-gray-600"
+                disabled={!selectedUser}
+              >
+                <FaImage />
+              </button>
+              
+              <button
+                type="submit"
+                className="p-3 bg-blue-600 text-white rounded-full hover:bg-blue-700 disabled:opacity-50"
+                disabled={!selectedUser || (message.trim() === "" && imageFiles.length === 0)}
+              >
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  viewBox="0 0 24 24"
+                  fill="currentColor"
+                  className="w-6 h-6"
+                >
+                  <path d="M3.478 2.405a.75.75 0 00-.926.94l2.432 7.905H13.5a.75.75 0 010 1.5H4.984l-2.432 7.905a.75.75 0 00.926.94 60.519 60.519 0 0018.445-8.986.75.75 0 000-1.218A60.517 60.517 0 003.478 2.405z" />
+                </svg>
+              </button>
+            </form>
           </div>
         )}
-
-        <div className="flex gap-2">
-          <button
-            type="button"
-            onClick={() => imageInputRef.current.click()}
-            className="p-3 rounded-full bg-[#131c2e] hover:bg-gray-600 text-white"
-            disabled={!selectedUser}
-          >
-            <FaImage />
-          </button>
-          <input
-            type="file"
-            multiple
-            accept="image/*"
-            onChange={handleImageChange}
-            className="hidden"
-            ref={imageInputRef}
-          />
-        </div>
-
-     
-        <button
-          type="button"
-          onClick={() => setShowEmojiPicker((prev) => !prev)}
-          className="p-3 rounded-full bg-[#131c2e] hover:bg-gray-600 text-white"
-          disabled={!selectedUser}
-        >
-          😊
-        </button>
-
-      
-        <button
-          type="submit"
-          className="p-3 rounded-full bg-blue-600 hover:bg-blue-700 text-white flex items-center"
-          disabled={
-            !selectedUser ||
-            (message.trim() === "" && imageFiles.length === 0)
-          }
-        >
-          <svg
-            xmlns="http://www.w3.org/2000/svg"
-            className="h-5 w-5"
-            viewBox="0 0 24 24"
-            fill="currentColor"
-          >
-            <path d="M3.478 2.405a.75.75 0 00-.926.94l2.432 7.905H13.5a.75.75 0 010 1.5H4.984l-2.432 7.905a.75.75 0 00.926.94 60.519 60.519 0 0018.445-8.986.75.75 0 000-1.218A60.517 60.517 0 003.478 2.405z" />
-          </svg>
-        </button>
-      </form>
-
-
-      {showEmojiPicker && (
-        <div className="absolute bottom-10 right-10 z-50 scale-90 origin-top-right">
-          <EmojiPicker
-            onEmojiClick={handleEmojiClick}
-            theme="dark"
-            emojiStyle="native"
-          />
-        </div>
-      )}
-    </div>
-        </div>
       </div>
-    </>
+    </div>
   );
 };
 

@@ -62,16 +62,23 @@ const SignUp = () => {
     
     onSubmit: async(values,{resetForm}) => {
       
-        const matchedmail = users.find((e)=>e.email===values.email)
-        if(matchedmail) {
-            alert("user already exist !")
-        }
+      
 
       try {
 
+       
+
         const userCredential = await createUserWithEmailAndPassword(auth, values.email, values.password);
+        const matchedmail = users.find((e)=>e.email===values.email)
+        
+        if(matchedmail) {
+            alert("user already exist !")
+        }
         const user = userCredential.user;
         console.log("✅ Logged in user:", user);
+
+
+     
         
 
         const docref=await addDoc(collection(db,"users"),{
