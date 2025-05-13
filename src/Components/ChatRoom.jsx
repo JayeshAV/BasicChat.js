@@ -1053,7 +1053,7 @@ const ChatRoom = () => {
               </div>
             )}
             
-            <form onSubmit={sendMessage} className="flex items-center gap-2">
+            <form onSubmit={sendMessage} className="flex items-center gap-2 fixed-bottom-form">
               <div className="relative flex-1">
                 <input
                   type="text"
