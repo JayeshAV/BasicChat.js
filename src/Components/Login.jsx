@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { Link, Links, useNavigate } from "react-router-dom";
 import { auth, db } from '../firebase.js';
-import { getAuth, signInWithEmailAndPassword, signInWithPopup, GoogleAuthProvider } from "firebase/auth";
+import { signInWithEmailAndPassword, signInWithPopup, GoogleAuthProvider } from "firebase/auth";
 import { FacebookAuthProvider } from "firebase/auth";
 import { Eye, EyeOff } from "lucide-react";
 import { toast, ToastContainer } from 'react-toastify';

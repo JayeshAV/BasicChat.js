@@ -583,7 +583,7 @@ const ChatRoom = () => {
       {windowWidth < 768 && selectedUser && (
         <button 
           onClick={toggleSidebar} 
-          className="fixed top-4 left-2 z-30 bg-blue-600 p-2 rounded-md shadow-lg"
+          className="fixed top-3  left-2 z-30 bg-blue-600 p-2 rounded-md shadow-lg"
         >
           <FaBars className="text-white" />
         </button>
@@ -597,7 +597,7 @@ const ChatRoom = () => {
         md:static fixed top-0 left-0 h-full z-20 transition-all duration-300 ease-in-out`}
       >
         <div className="bg-[#1a2436] p-4 shadow-md flex items-center justify-between sticky top-0 z-10">
-          <h2 className="text-xl text-white font-bold text-center m-auto">Chat</h2>
+          <h2 className="text-xl text-white font-bold text-center md:m-0 lg:m-0 xl-m-0 m-auto">Chat</h2>
           <div className="flex gap-2">
             <button
               className={`p-2 rounded-lg ${
@@ -970,9 +970,9 @@ const ChatRoom = () => {
                 {showEmojiPicker && (
                   <div 
                     ref={emojiPickerRef}
-                    className="absolute bottom-full right-0 mb-2 z-10"
+                    className="absolute bottom-full right-0 mb-2 z-10 w-[250px] sm:w-[350px] md:[300px] md:ps-10 lg:[400px]  "
                   >
-                    <EmojiPicker onEmojiClick={handleEmojiClick} />
+                    <EmojiPicker onEmojiClick={handleEmojiClick}  />
                   </div>
                 )}
               </div>

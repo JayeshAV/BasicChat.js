@@ -20,3 +20,4 @@ export const db = getFirestore(app);  // Ensure Firestore is used, not Realtime 
 import { getStorage } from "firebase/storage";
 const storage = getStorage(app);
 export { storage };
+
