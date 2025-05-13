@@ -56,6 +56,7 @@ const ChatRoom = () => {
   const handleEmojiClick = (emojiData) => {
     setMessage((prev) => prev + emojiData.emoji);
     inputRef.current?.focus();
+    setShowEmojiPicker(false)
   };
 
   
@@ -88,6 +89,7 @@ const ChatRoom = () => {
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
+
   // useEffect(() => {
   //   const handleClickOutside = (event) => {
   //     if (emojiPickerRef.current && !emojiPickerRef.current.contains(event.target)) {
@@ -632,6 +634,8 @@ const ChatRoom = () => {
           recognition.onresult=(event)=>{
             const transcript=event.results[0][0].transcript;
             setMessage(transcript)
+            console.log(message)
+            console.log(transcript)
             setIsListening(false)
          }
        
@@ -650,14 +654,16 @@ const ChatRoom = () => {
         };
   },[])
 
-  const toggleListen=(e)=>
-  {
-    e.preventDefault()
-      
-     if(recognization){
-      setIsListening((prev)=>!prev)
-     }
-  }
+  const toggleListen = (e) => {
+    // e.preventDefault(); // अब हटा दिया गया है
+    console.log('toggleListen called');
+    console.log('isListening before toggle:', isListening);
+    setIsListening((prev) => {
+      console.log('prev isListening:', prev);
+      return !prev;
+    });
+    console.log('isListening after toggle:', !isListening); // यह मान तुरंत अपडेट नहीं होगा क्योंकि setState एसिंक्रोनस है
+  };
 
   useEffect(()=>{
     if(recognization){
