@@ -807,7 +807,7 @@ const ChatRoom = () => {
           </div>
         </div>
   
-        {/* Messages area */}
+        
         <div className="flex-1 overflow-y-auto p-2 md:p-4 space-y-4 bg-[#0f172a] text-white">
           {messages.length === 0 ? (
             <div className="h-full flex flex-col items-center justify-center">
