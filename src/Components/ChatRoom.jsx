@@ -14,7 +14,7 @@ import {
   where,
   getDoc,
 } from "firebase/firestore";
-import { FaSignOutAlt, FaTrashAlt, FaArrowLeft, FaSearch, FaClock, FaUsers, FaImage, FaSmile, FaBars, FaTimes } from "react-icons/fa";
+import { FaSignOutAlt, FaTrashAlt, FaArrowLeft, FaSearch, FaClock, FaUsers, FaImage, FaSmile, FaBars, FaTimes, FaMicrophone } from "react-icons/fa";
 import { useNavigate } from "react-router-dom";
 import EmojiPicker from "emoji-picker-react";
 import { FilePond, registerPlugin } from 'react-filepond';
@@ -56,8 +56,6 @@ const ChatRoom = () => {
   };
 
   
-
-
   useEffect(() => {
     const handleResize = () => {
       setWindowWidth(window.innerWidth);
@@ -78,21 +76,15 @@ const ChatRoom = () => {
     }
   };
   
-
-
   useEffect(() => {
     if (window.innerWidth < 768 && selectedUser) {
       setSidebarOpen(false); 
     }
   }, [selectedUser]);
   
-
-
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
-
-
   // useEffect(() => {
   //   const handleClickOutside = (event) => {
   //     if (emojiPickerRef.current && !emojiPickerRef.current.contains(event.target)) {
@@ -137,6 +129,8 @@ const ChatRoom = () => {
       reader.readAsDataURL(file);
     });
   };
+
+   // message send funtionality 
 
   const sendMessage = async (e) => {
     e.preventDefault();
@@ -257,6 +251,7 @@ const ChatRoom = () => {
     }
 };
 
+  // updated contacts sender side
   const updateRecentContacts = (recipientUid, lastMessage, lastMessageTime) => {
     setRecentContacts((prevContacts) => {
       const existingContactIndex = prevContacts.findIndex(
@@ -291,7 +286,8 @@ const ChatRoom = () => {
       );
     });
   };
-
+ 
+   // recever and sender side message
   const  updateRecentContactsOnNewMessage = (
     recipientUid,
     displayName,
@@ -330,6 +326,7 @@ const ChatRoom = () => {
     });
   };
 
+  // messages fetch through snapshot and query function condition
   useEffect(() => {
     if (!auth.currentUser || !selectedUser || !selectedUser.uid) return;
 
@@ -472,6 +469,7 @@ const ChatRoom = () => {
     return () => unsubscribe();
   }, [auth.currentUser, users]);
 
+  //fetch users
   useEffect(() => {
     const fetchUsers = async () => {
       try {
@@ -493,6 +491,7 @@ const ChatRoom = () => {
     fetchUsers();
   }, []);
 
+  //delete message functionality 
   const deleteMessage = async (id) => {
     try {
       const chatRef = doc(db, 'privateChats', id);
@@ -520,6 +519,7 @@ const ChatRoom = () => {
     }
   };
 
+  //logout functionality
   const handleLogout = () => {
     const confirmLogout = window.confirm("Are you sure you want to logout?");
     if (confirmLogout) {
@@ -593,6 +593,7 @@ const ChatRoom = () => {
     setShowSearchInput(false);
   };
 
+  //search usesr filter
   const filterUsers = users.filter(
     (user) =>                                                                     
       user.displayName?.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -610,6 +611,34 @@ const ChatRoom = () => {
     }
   };                                                                                                                                                            
   
+  // mike speaking functionality
+
+   const StartListen=()=>{
+   
+    const SpeechRecognition =  window.SpeechRecognition || window.webkitSpeechRecognition;
+
+       if (!SpeechRecognition) {
+          alert("Speech Recognition is not supported in this browser.");
+          return;
+        }
+
+    const recognition = new SpeechRecognition()
+
+    recognition.lang="en-us"
+    recognition.start()
+
+
+    recognition.onresult=(event)=>{
+       const transcript=event.results[0][0].transcript;
+       setMessage(transcript)
+    }
+
+    recognition.onerror=(event)=>{
+      console.error("error occupied in speech recognization : ",event.error)
+    }
+
+   }
+
   return (
     <div className="flex h-screen bg-[#131c2e] overflow-hidden">
       
@@ -1040,9 +1069,12 @@ const ChatRoom = () => {
               >
                 <FaImage />
               </button>
+              <button onClick={(e)=>StartListen(e)}><FaMicrophone />
+              </button>
               
               <button
                 type="submit"
+                
                 className="p-3 bg-blue-600 text-white rounded-full hover:bg-blue-700 disabled:opacity-50"
                 disabled={!selectedUser || (message.trim() === "" && imageFiles.length === 0)}
               >
