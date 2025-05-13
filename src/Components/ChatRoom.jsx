@@ -21,6 +21,7 @@ import { FilePond, registerPlugin } from 'react-filepond';
 import 'filepond/dist/filepond.min.css';
 import FilePondPluginFileValidateType from 'filepond-plugin-file-validate-type';
 import FilePondPluginFileValidateSize from 'filepond-plugin-file-validate-size';
+import { toast } from "react-toastify";
 // import GetAiResponse from "./GetAiResponse.js";  
 
 
@@ -48,10 +49,12 @@ const ChatRoom = () => {
   const inputRef = useRef(null);
   const [windowWidth, setWindowWidth] = useState(window.innerWidth);
   const emojiPickerRef = useRef(null);
+  const [isListening,setIsListening]=useState(false)
+  const [recognization,setRecognization]=useState(null)
+
 
   const handleEmojiClick = (emojiData) => {
     setMessage((prev) => prev + emojiData.emoji);
-    // setShowEmojiPicker(false);
     inputRef.current?.focus();
   };
 
@@ -613,8 +616,7 @@ const ChatRoom = () => {
   
   // mike speaking functionality
 
-   const StartListen=()=>{
-   
+  useEffect(()=>{
     const SpeechRecognition =  window.SpeechRecognition || window.webkitSpeechRecognition;
 
        if (!SpeechRecognition) {
@@ -622,22 +624,51 @@ const ChatRoom = () => {
           return;
         }
 
-    const recognition = new SpeechRecognition()
+        if(SpeechRecognition){
+          const recognition = new SpeechRecognition()
+          recognition.lang="en-us"
+          recognition.start()
 
-    recognition.lang="en-us"
-    recognition.start()
+          recognition.onresult=(event)=>{
+            const transcript=event.results[0][0].transcript;
+            setMessage(transcript)
+            setIsListening(false)
+         }
+       
+         recognition.onerror=(event)=>{
+          console.error("error occupied in speech recognization : ",event.error)
+          setIsListening(false)
+        }
+        }else{
+         toast.error("this browser is not support for speech recognization !")
+        }
 
+        return () => {
+          if (recognization) {
+            recognization.stop();
+          }
+        };
+  },[])
 
-    recognition.onresult=(event)=>{
-       const transcript=event.results[0][0].transcript;
-       setMessage(transcript)
+  const toggleListen=(e)=>
+  {
+    e.preventDefault()
+      
+     if(recognization){
+      setIsListening((prev)=>!prev)
+     }
+  }
+
+  useEffect(()=>{
+    if(recognization){
+       if(isListening){
+       recognization.start()
+       }else{
+         recognization.stop()
+       }
     }
+  },[isListening,recognization])
 
-    recognition.onerror=(event)=>{
-      console.error("error occupied in speech recognization : ",event.error)
-    }
-
-   }
 
   return (
     <div className="flex h-screen bg-[#131c2e] overflow-hidden">
@@ -1069,7 +1100,7 @@ const ChatRoom = () => {
               >
                 <FaImage />
               </button>
-              <button onClick={(e)=>StartListen(e)}><FaMicrophone />
+              <button onClick={toggleListen}><FaMicrophone color={isListening?'green':'black'} />
               </button>
               
               <button
