@@ -55,6 +55,25 @@ const ChatRoom = () => {
   };
 
   useEffect(() => {
+
+    const handleInputInteraction = (e) => {
+      if (inputRef.current && inputRef.current.contains(e.target) && window.innerWidth < 768) {
+        setSidebarOpen(false);
+      }
+    };
+    
+    document.addEventListener('touchstart', handleInputInteraction);
+    document.addEventListener('mousedown', handleInputInteraction);
+    
+    return () => {
+      document.removeEventListener('touchstart', handleInputInteraction);
+      document.removeEventListener('mousedown', handleInputInteraction);
+    };
+
+  }, []);
+
+
+  useEffect(() => {
     const handleResize = () => {
       setWindowWidth(window.innerWidth);
       handleScreenSizeChange();
@@ -796,7 +815,7 @@ const ChatRoom = () => {
               )}
             </h2>
           </div>
-          <div className="flex items-center">
+          <div className="flex items-center sticky top-0">
             <h1 className="pe-3 hidden md:block truncate max-w-[150px]">{currentUserDetails?.displayName}</h1>
             <button
               onClick={handleLogout}
@@ -904,11 +923,11 @@ const ChatRoom = () => {
                           isCurrentUser ? "right-0 transform translate-x-1/2 -translate-y-1/2" : "left-0 transform -translate-x-1/2 -translate-y-1/2"
                         }`}
                       >
-                        <div
+                        {/* <div
                           className={`absolute transform rotate-45 w-4 h-4 ${
                             isCurrentUser ? "bg-[#065f46]" : "bg-[#1f2937]"
                           }`}
-                        ></div>
+                        ></div> */}
                       </div>
                     </div>
                     
@@ -983,6 +1002,12 @@ const ChatRoom = () => {
                 onChange={handleImageChange}
                 className="hidden"
                 ref={imageInputRef}
+                onFocus={(e) => {
+                  e.stopPropagation();
+                  if (window.innerWidth < 768) {
+                    setSidebarOpen(false);
+                  }
+                }}
                 multiple
               />
               
