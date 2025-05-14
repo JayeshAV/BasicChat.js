@@ -787,15 +787,15 @@ if(messages.length>0){
   }, []);
 
   const toggleListen = (e) => {
-    // e.preventDefault(); // अब हटा दिया गया है
-    console.log("toggleListen called");
+    // e.preventDefault(); 
+    // console.log("toggleListen called");
     setIsListening(true);
-    console.log("isListening before toggle:", isListening);
+    // console.log("isListening before toggle:", isListening);
     setIsListening((prev) => {
       console.log("prev isListening:", prev);
       return !prev;
     });
-    console.log("isListening after toggle:", !isListening); // यह मान तुरंत अपडेट नहीं होगा क्योंकि setState एसिंक्रोनस है
+    // console.log("isListening after toggle:", !isListening);
   };
 
   useEffect(() => {
@@ -811,8 +811,9 @@ if(messages.length>0){
 // Step 1: Get last received message (from other user)
 const lastReplyTime = messages
   .filter(msg => msg.uid !== currentUserDetails.uid)
-  .at(-1)?.timestamp;
+  .at(-1)?.createdAt.toMillis();
 
+  console.log(lastReplyTime)
   return (
     <div className="flex h-screen bg-[#131c2e] overflow-hidden">
       {windowWidth < 768 && selectedUser && (
@@ -1122,7 +1123,7 @@ const lastReplyTime = messages
                         </p>
                       ) : (
                         <>
-                          <p className="text-white break-words flex justify-between items-center"><span>{msg.text}</span> <span>{isCurrentUser ? (<h1>{msg.uid==currentUserDetails.uid ? (<MdOutlineDoneAll className={`ms-2 ${lastReplyTime && msg.timestamp < lastReplyTime?'text-blue-500':'text-gray-500'}`} />
+                          <p className="text-white break-words flex justify-between items-center"><span>{msg.text}</span> <span>{isCurrentUser ? (<h1>{msg.uid==currentUserDetails.uid ? (<MdOutlineDoneAll className={`ms-2 ${lastReplyTime && msg.createdAt?.toMillis() < lastReplyTime?'text-blue-500':'text-gray-500'}`} />
 ):(<h1 className="text-red-700">Retry !</h1>)}</h1>):("")}</span></p> 
                           {msg.images && msg.images && (
                             <div className="mt-2 rounded-lg overflow-hidden">
