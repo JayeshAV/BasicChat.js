@@ -14,21 +14,31 @@ import {
   where,
   getDoc,
 } from "firebase/firestore";
-import { FaSignOutAlt, FaTrashAlt, FaArrowLeft, FaSearch, FaClock, FaUsers, FaImage, FaSmile, FaBars, FaTimes, FaMicrophone } from "react-icons/fa";
+import {
+  FaSignOutAlt,
+  FaTrashAlt,
+  FaArrowLeft,
+  FaSearch,
+  FaClock,
+  FaUsers,
+  FaImage,
+  FaSmile,
+  FaBars,
+  FaTimes,
+  FaMicrophone,
+} from "react-icons/fa";
 import { useNavigate } from "react-router-dom";
 import EmojiPicker from "emoji-picker-react";
-import { FilePond, registerPlugin } from 'react-filepond';
-import 'filepond/dist/filepond.min.css';
-import FilePondPluginFileValidateType from 'filepond-plugin-file-validate-type';
-import FilePondPluginFileValidateSize from 'filepond-plugin-file-validate-size';
+import { FilePond, registerPlugin } from "react-filepond";
+import "filepond/dist/filepond.min.css";
+import FilePondPluginFileValidateType from "filepond-plugin-file-validate-type";
+import FilePondPluginFileValidateSize from "filepond-plugin-file-validate-size";
 import { toast } from "react-toastify";
-// import GetAiResponse from "./GetAiResponse.js";  
-
+// import GetAiResponse from "./GetAiResponse.js";
 
 registerPlugin(FilePondPluginFileValidateType, FilePondPluginFileValidateSize);
 
 const ChatRoom = () => {
-
   const [message, setMessage] = useState("");
   const [messages, setMessages] = useState([]);
   const [users, setUsers] = useState([]);
@@ -49,43 +59,39 @@ const ChatRoom = () => {
   const inputRef = useRef(null);
   const [windowWidth, setWindowWidth] = useState(window.innerWidth);
   const emojiPickerRef = useRef(null);
-  const [isListening,setIsListening]=useState(false)
-  const [recognization,setRecognization]=useState(null)
-
+  const [isListening, setIsListening] = useState(false);
+  const [recognization, setRecognization] = useState(null);
 
   const handleEmojiClick = (emojiData) => {
     setMessage((prev) => prev + emojiData.emoji);
     inputRef.current?.focus();
-    setShowEmojiPicker(false)
+    setShowEmojiPicker(false);
   };
 
-  
   useEffect(() => {
     const handleResize = () => {
       setWindowWidth(window.innerWidth);
       handleScreenSizeChange();
     };
-    
-    window.addEventListener('resize', handleResize);
-    return () => window.removeEventListener('resize', handleResize);
 
+    window.addEventListener("resize", handleResize);
+    return () => window.removeEventListener("resize", handleResize);
   }, []);
 
-  
   const handleScreenSizeChange = () => {
     if (window.innerWidth < 768) {
-      setSidebarOpen(false); 
+      setSidebarOpen(false);
     } else {
-      setSidebarOpen(true); 
+      setSidebarOpen(true);
     }
   };
-  
+
   useEffect(() => {
     if (window.innerWidth < 768 && selectedUser) {
-      setSidebarOpen(false); 
+      setSidebarOpen(false);
     }
   }, [selectedUser]);
-  
+
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
@@ -103,21 +109,33 @@ const ChatRoom = () => {
 
   const getFormattedTime = () => {
     const now = new Date();
-    const hours = now.getHours().toString().padStart(2, '0');
-    const minutes = now.getMinutes().toString().padStart(2, '0');
+    const hours = now.getHours().toString().padStart(2, "0");
+    const minutes = now.getMinutes().toString().padStart(2, "0");
     return `${hours}:${minutes}`;
   };
 
-  const handleImageChange = (e) => {
+  const handleImageChange = async (e) => {
     const newFiles = Array.from(e.target.files).filter((file) =>
       file.type.startsWith("image/")
     );
     setImageFiles((prevFiles) => [...prevFiles, ...newFiles]);
+
+    // const compressBlobs = [];
+
+    // for (const file of newFiles) {
+    //   const compressBlob = await compressImage(file);
+    //   compressBlobs.push(compressBlob);
+
+    //   console.log("compress blob: ", compressBlob);
+    //   console.log("compress blob size: ", compressBlobs);
+    // }
   };
 
   const handleCancel = (indexToRemove) => {
     setImageFiles((prevFiles) => {
-      const updatedFiles = prevFiles.filter((_, index) => index !== indexToRemove);
+      const updatedFiles = prevFiles.filter(
+        (_, index) => index !== indexToRemove
+      );
       return updatedFiles;
     });
   };
@@ -126,104 +144,197 @@ const ChatRoom = () => {
     imageInputRef.current?.click();
   };
 
-  const convertToBase64 = (file) => {
+  // const convertToBase64 = (file) => {
+  //   return new Promise((resolve, reject) => {
+  //     const reader = new FileReader();
+  //     reader.onload = () => resolve(reader.result);
+  //     reader.onerror = reject;
+  //     reader.readAsDataURL(file);
+  //   });
+  // };
+
+  const compressImage = (
+    file,
+    maxWidth = 800,
+    maxHeight = 600,
+    quality = 0.7
+  ) => {
     return new Promise((resolve, reject) => {
+      const img = new Image();
+
+      img.onload = () => {
+        let width = img.width;
+        let height = img.height;
+
+        if (width > maxWidth) {
+          height *= maxWidth / width;
+          width = maxWidth;
+        }
+
+        if (height > maxHeight) {
+          width *= maxHeight / height;
+          height = maxHeight;
+        }
+
+        const canvas = document.createElement("canvas");
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext("2d");
+        ctx.drawImage(img, 0, 0, width, height);
+
+        canvas.toBlob(
+          (blob) => {
+            if (blob) {
+              resolve(blob);
+            } else {
+              reject(new Error("Failed to compress the image."));
+            }
+          },
+          "image/jpeg", // You can change this to 'image/png' if needed
+          quality
+        );
+      };
+
+      img.onerror = reject;
+
       const reader = new FileReader();
-      reader.onload = () => resolve(reader.result);
+      reader.onload = (event) => {
+        img.src = event.target.result;
+      };
       reader.onerror = reject;
       reader.readAsDataURL(file);
     });
   };
 
-   // message send funtionality 
-
   const sendMessage = async (e) => {
     e.preventDefault();
 
-
     if (!auth.currentUser) {
-        console.error("User not authenticated.");
-        alert("Please log in to send a message.");
-        return;
+      console.error("User not authenticated.");
+      alert("Please log in to send a message.");
+      return;
     }
 
     if (message.trim() === "" && imageFiles.length === 0) return;
 
-   
     if (!selectedUser) {
-        alert("Please select a user to chat with first");
-        return;
+      alert("Please select a user to chat with first");
+      return;
     }
 
     setShouldSendImages(true);
 
     try {
-        const currentUserData = users.find((user) => user.email === auth.currentUser?.email);
-        const displayName =
-            currentUserData?.displayName ||
-            auth.currentUser?.displayName ||
-            auth.currentUser?.email?.split("@")[0] ||
-            "Unknown User";
+      const currentUserData = users.find(
+        (user) => user.email === auth.currentUser?.email
+      );
+      const displayName =
+        currentUserData?.displayName ||
+        auth.currentUser?.displayName ||
+        auth.currentUser?.email?.split("@")[0] ||
+        "Unknown User";
 
-        const senderId = auth.currentUser.uid;
-        const recipientUid = selectedUser.uid;
+      const senderId = auth.currentUser.uid;
+      const recipientUid = selectedUser.uid;
 
-       
-        // const isChatbot = 
-        //     recipientUid === "ai_bot_uid" || 
-        //     recipientUid === 'ai_bot_uid' ||  // Try single quotes
-        //     recipientUid.includes("ai_bot_uid") || // Check if it's part of a string
-        //     recipientUid.toString().trim() === "ai_bot_uid" || // Trim and convert to string
-        //     selectedUser.email === "ai@bot.com"; // Fallback to email check
-            
-        // console.log("Is AI Bot (new check):", isChatbot);
-        // console.log("Is chatbot?", isChatbot, "Recipient UID:", recipientUid);
-        // console.log(recipientUid)
+      // const isChatbot =
+      //     recipientUid === "ai_bot_uid" ||
+      //     recipientUid === 'ai_bot_uid' ||  // Try single quotes
+      //     recipientUid.includes("ai_bot_uid") || // Check if it's part of a string
+      //     recipientUid.toString().trim() === "ai_bot_uid" || // Trim and convert to string
+      //     selectedUser.email === "ai@bot.com"; // Fallback to email check
 
-        let messageData;
+      // console.log("Is AI Bot (new check):", isChatbot);
+      // console.log("Is chatbot?", isChatbot, "Recipient UID:", recipientUid);
+      // console.log(recipientUid)
 
-        // if (isChatbot) {
-           
-        //     const chatbotResponse = await GetAiResponse([{ role: "user", content: message }]);
-        //     console.log(message)
+      let messageData;
 
-        //     messageData = {
-        //         text: chatbotResponse,
-        //         createdAt: serverTimestamp(),
-        //         localTimeStamp: getFormattedTime(),
-        //         uid: "chatbot", 
-        //         email: "chatbot@example.com", 
-        //         displayName: "Chatbot",
-        //         isDeleted: false,
-        //         recipientUid: "chatbot",
-        //         recipientEmail: "chatbot@example.com",
-        //         participants: [senderId, "chatbot"],
-        //         chatId: "chatbot",
-        //         images: null,
-        //     };
-        // } 
-        
-        if (!senderId || !recipientUid) {
-          console.error("Invalid sender or recipient UID");
-          alert("Error: Invalid user data.");
-          return;
+      // if (isChatbot) {
+
+      //     const chatbotResponse = await GetAiResponse([{ role: "user", content: message }]);
+      //     console.log(message)
+
+      //     messageData = {
+      //         text: chatbotResponse,
+      //         createdAt: serverTimestamp(),
+      //         localTimeStamp: getFormattedTime(),
+      //         uid: "chatbot",
+      //         email: "chatbot@example.com",
+      //         displayName: "Chatbot",
+      //         isDeleted: false,
+      //         recipientUid: "chatbot",
+      //         recipientEmail: "chatbot@example.com",
+      //         participants: [senderId, "chatbot"],
+      //         chatId: "chatbot",
+      //         images: null,
+      //     };
+      // }
+
+      if (!senderId || !recipientUid) {
+        console.error("Invalid sender or recipient UID");
+        alert("Error: Invalid user data.");
+        return;
       }
 
       const participants = [senderId, recipientUid];
       const chatId = participants.sort().join("_");
       const localTimeStamp = getFormattedTime();
       let base64 = null;
-
+        
       if (imageFiles.length > 0) {
-          try {
-              base64 = await convertToBase64(imageFiles[0]);
-          } catch (error) {
-              console.error("Error converting image to base64:", error);
-              base64 = null;
-          }
-      }
 
-      messageData = {
+
+        for(const file of imageFiles){
+        try {
+          const compressBlob = await compressImage(file);
+          console.log(file)
+          
+            const reader = new FileReader();
+
+            await new Promise((resolve, reject) => {
+             reader.onloadend = () => {
+               resolve (reader.result)
+             };
+             reader.onerror = reject;
+             reader.readAsDataURL(compressBlob);
+           }).then(async(base64Data)=>{
+            
+            base64=base64Data
+
+            await addDoc(collection(db,privateChatCollectionName),{
+              text: message,
+              createdAt: serverTimestamp(),
+              localTimeStamp: localTimeStamp,
+              uid: senderId,
+              email: auth.currentUser.email,
+              displayName: displayName,
+              isDeleted: false,
+              recipientUid: recipientUid,
+              recipientEmail: selectedUser.email,
+              participants: participants,
+              chatId: chatId,
+              images: base64Data,
+              filename:file.name,
+              size: compressBlob.size,
+              type: compressBlob.type,
+              chatMessageRef: privateChatCollectionName
+            })
+           
+            console.log('Image uploaded and document created:', file.name);
+           }).catch((Err)=>{
+            console.log("error converting to base64:",Err)
+           })
+          
+        } catch (error) {
+          console.error("Error converting image to base64:", error);
+          base64 = null;
+        }
+
+      }
+      setImageFiles()
+      }else{
+        messageData = {
           text: message,
           createdAt: serverTimestamp(),
           localTimeStamp: localTimeStamp,
@@ -234,27 +345,23 @@ const ChatRoom = () => {
           recipientUid: recipientUid,
           recipientEmail: selectedUser.email,
           participants: participants,
-          chatId: chatId,
-          images: base64,
-      };
-   
-
+          chatId: chatId
+        };
   
-  await addDoc(collection(db, privateChatCollectionName), messageData);
+        await addDoc(collection(db, privateChatCollectionName), messageData);
+      }
+    
 
- 
-  setMessage("");
-  setImageFiles([]);
-  setShowEmojiPicker(false);
-  setShouldSendImages(false);
-  updateRecentContacts(recipientUid, message, getFormattedTime());
-           
-       
+      setMessage("");
+      setImageFiles([]);
+      setShowEmojiPicker(false);
+      setShouldSendImages(false);
+      updateRecentContacts(recipientUid, message, getFormattedTime());
     } catch (error) {
-        console.error("Error sending message:", error);
-        alert("Failed to send message: " + error.message);
+      console.error("Error sending message:", error);
+      alert("Failed to send message: " + error.message);
     }
-};
+  };
 
   // updated contacts sender side
   const updateRecentContacts = (recipientUid, lastMessage, lastMessageTime) => {
@@ -291,9 +398,9 @@ const ChatRoom = () => {
       );
     });
   };
- 
-   // recever and sender side message
-  const  updateRecentContactsOnNewMessage = (
+
+  // recever and sender side message
+  const updateRecentContactsOnNewMessage = (
     recipientUid,
     displayName,
     email,
@@ -312,7 +419,7 @@ const ChatRoom = () => {
         updatedContacts.splice(existingContactIndex, 1);
         updatedContacts.unshift({
           ...existingContact,
-          lastMessage,                                                            
+          lastMessage,
           lastMessageTime,
         });
       } else {
@@ -386,7 +493,7 @@ const ChatRoom = () => {
             const chatMessagesQuery = query(
               collection(db, privateChatCollectionName),
               where("chatId", "==", chatId),
-              orderBy("createdAt", "desc"),
+              orderBy("createdAt", "desc")
             );
 
             const chatMessagesSnapshot = await getDocs(chatMessagesQuery);
@@ -496,10 +603,10 @@ const ChatRoom = () => {
     fetchUsers();
   }, []);
 
-  //delete message functionality 
+  //delete message functionality
   const deleteMessage = async (id) => {
     try {
-      const chatRef = doc(db, 'privateChats', id);
+      const chatRef = doc(db, "privateChats", id);
       const docSnapshot = await getDoc(chatRef);
 
       if (!docSnapshot.exists()) {
@@ -546,8 +653,7 @@ const ChatRoom = () => {
     setSelectedUser(selectedUserWithUid);
     setSearchQuery("");
     setShowSearchInput(false);
-    
-   
+
     if (window.innerWidth < 768) {
       setSidebarOpen(false);
     }
@@ -600,9 +706,12 @@ const ChatRoom = () => {
 
   //search usesr filter
   const filterUsers = users.filter(
-    (user) =>                                                                     
+    (user) =>
       user.displayName?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      user.email?.split("@")[0].toLowerCase().includes(searchQuery.toLowerCase())
+      user.email
+        ?.split("@")[0]
+        .toLowerCase()
+        .includes(searchQuery.toLowerCase())
   );
 
   const toggleViewMode = (mode) => {
@@ -614,92 +723,92 @@ const ChatRoom = () => {
       setSidebarOpen(true);
       setSelectedUser(null);
     }
-  };                                                                                                                                                            
-  
+  };
+
   // mike speaking functionality
 
-  useEffect(()=>{
-    const SpeechRecognition =  window.SpeechRecognition || window.webkitSpeechRecognition;
+  useEffect(() => {
+    const SpeechRecognition =
+      window.SpeechRecognition || window.webkitSpeechRecognition;
 
-       if (!SpeechRecognition) {
-          alert("Speech Recognition is not supported in this browser.");
-          return;
-        }
+    if (!SpeechRecognition) {
+      alert("Speech Recognition is not supported in this browser.");
+      return;
+    }
 
-        if(SpeechRecognition){
-          const recognition = new SpeechRecognition()
-          recognition.lang="en-us"
-          recognition.start()
+    if (SpeechRecognition) {
+      const recognition = new SpeechRecognition();
+      recognition.lang = "en-us";
+      recognition.start();
 
-          recognition.onresult=(event)=>{
-            const transcript=event.results[0][0].transcript;
-            setMessage(transcript)
-            console.log(message)
-            console.log(transcript)
-            setIsListening(false)
-         }
-       
-         recognition.onerror=(event)=>{
-          console.error("error occupied in speech recognization : ",event.error)
-          setIsListening(false)
-        }
-        }else{
-         toast.error("this browser is not support for speech recognization !")
-        }
+      recognition.onresult = (event) => {
+        const transcript = event.results[0][0].transcript;
+        setMessage(transcript);
+        console.log(message);
+        console.log(transcript);
+        setIsListening(false);
+      };
 
-        return () => {
-          if (recognization) {
-            recognization.stop();
-          }
-        };
-  },[])
+      recognition.onerror = (event) => {
+        console.error("error occupied in speech recognization : ", event.error);
+        setIsListening(false);
+      };
+    } else {
+      toast.error("this browser is not support for speech recognization !");
+    }
+
+    return () => {
+      if (recognization) {
+        recognization.stop();
+      }
+    };
+  }, []);
 
   const toggleListen = (e) => {
     // e.preventDefault(); // अब हटा दिया गया है
-    console.log('toggleListen called');
-    console.log('isListening before toggle:', isListening);
+    console.log("toggleListen called");
+    setIsListening(true);
+    console.log("isListening before toggle:", isListening);
     setIsListening((prev) => {
-      console.log('prev isListening:', prev);
+      console.log("prev isListening:", prev);
       return !prev;
     });
-    console.log('isListening after toggle:', !isListening); // यह मान तुरंत अपडेट नहीं होगा क्योंकि setState एसिंक्रोनस है
+    console.log("isListening after toggle:", !isListening); // यह मान तुरंत अपडेट नहीं होगा क्योंकि setState एसिंक्रोनस है
   };
 
-  useEffect(()=>{
-    if(recognization){
-       if(isListening){
-       recognization.start()
-       }else{
-         recognization.stop()
-       }
+  useEffect(() => {
+    console.log("useEffect - isListening:", isListening);
+    if (recognization && isListening) {
+      recognization.start();
+    } else if (recognization && !isListening) {
+      recentContacts.stop();
     }
-  },[isListening,recognization])
-
+  }, [isListening, recognization]);
 
   return (
     <div className="flex h-screen bg-[#131c2e] overflow-hidden">
-      
       {windowWidth < 768 && selectedUser && (
-        <button 
-        onClick={(e) => {
-          e.stopPropagation(); 
-          toggleSidebar();
-        }}
+        <button
+          onClick={(e) => {
+            e.stopPropagation();
+            toggleSidebar();
+          }}
           className="fixed top-3  left-2 z-30 bg-blue-600 p-2 rounded-md shadow-lg"
         >
           <FaBars className="text-white" />
         </button>
       )}
-  
-      
-      <div 
+
+      <div
         className={`${
-          sidebarOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'
+          sidebarOpen ? "translate-x-0" : "-translate-x-full md:translate-x-0"
         } w-full md:w-80 bg-[#1A2436] border-r border-gray-700 flex-shrink-0 
         md:static fixed top-0 left-0 h-full z-20 transition-all duration-300 ease-in-out`}
       >
         <div className="bg-[#1a2436] p-4 shadow-md flex items-center justify-between sticky top-0 z-10">
-          <h2 className="text-xl text-white font-bold text-center md:m-0 lg:m-0 xl-m-0 m-auto">Chat</h2>
+          <h2 className="text-xl text-white font-bold text-center md:m-0 lg:m-0 xl-m-0 m-auto">
+            BaatChit
+          </h2>
           <div className="flex gap-2">
             <button
               className={`p-2 rounded-lg ${
@@ -727,7 +836,7 @@ const ChatRoom = () => {
             </button>
           </div>
         </div>
-  
+
         {showSearchInput && (
           <div className="p-4">
             <div className="flex">
@@ -744,7 +853,7 @@ const ChatRoom = () => {
             </div>
           </div>
         )}
-  
+
         <div className="pt-2 h-[calc(100%-60px)] overflow-y-auto">
           {searchQuery &&
             filterUsers
@@ -775,7 +884,7 @@ const ChatRoom = () => {
                   </div>
                 </div>
               ))}
-  
+
           {!searchQuery && viewMode === "recent" && (
             <>
               <h3 className="text-gray-400 text-sm font-medium px-4 py-2">
@@ -797,7 +906,9 @@ const ChatRoom = () => {
                         {(contact.displayName?.charAt(0) || "U").toUpperCase()}
                       </span>
                       <div className="flex-1 overflow-hidden">
-                        <h3 className="font-medium truncate">{contact.displayName}</h3>
+                        <h3 className="font-medium truncate">
+                          {contact.displayName}
+                        </h3>
                         <p className="text-gray-400 text-sm truncate">
                           {contact.lastMessage || "Start a conversation"}
                         </p>
@@ -812,7 +923,7 @@ const ChatRoom = () => {
               )}
             </>
           )}
-  
+
           {!searchQuery && viewMode === "all" && (
             <>
               <h3 className="text-gray-400 text-sm font-medium px-4 py-2">
@@ -857,24 +968,26 @@ const ChatRoom = () => {
           )}
         </div>
       </div>
-  
+
       {/* Chat area */}
-      <div 
+      <div
         className={`${
-          (!sidebarOpen || windowWidth >= 768) ? 'flex-1' : 'hidden md:block md:flex-1'
+          !sidebarOpen || windowWidth >= 768
+            ? "flex-1"
+            : "hidden md:block md:flex-1"
         } flex flex-col bg-[#131c2e] text-white`}
         onClick={(e) => e.stopPropagation()}
         onTouchStart={(e) => e.stopPropagation()}
       >
         {/* Chat header */}
-        <div className="bg-[#1a2436] p-3 md:p-5 shadow-md flex items-center justify-between" onClick={(e) => e.stopPropagation()}
-  onTouchStart={(e) => e.stopPropagation()}>
+        <div
+          className="bg-[#1a2436] p-3 md:p-5 shadow-md flex items-center justify-between"
+          onClick={(e) => e.stopPropagation()}
+          onTouchStart={(e) => e.stopPropagation()}
+        >
           <div className="flex items-center flex-1">
             {windowWidth < 768 && selectedUser && (
-              <button 
-                onClick={backToContacts}
-                className="text-white p-2 mr-2"
-              >
+              <button onClick={backToContacts} className="text-white p-2 mr-2">
                 <FaArrowLeft />
               </button>
             )}
@@ -891,7 +1004,7 @@ const ChatRoom = () => {
                   <span className="truncate max-w-[150px] md:max-w-[250px]">
                     {selectedUser.displayName ||
                       selectedUser.email?.split("@")[0] ||
-                      "Unknown User"} 
+                      "Unknown User"}
                   </span>
                 </div>
               ) : (
@@ -902,7 +1015,13 @@ const ChatRoom = () => {
             </h2>
           </div>
           <div className="flex items-center sticky top-0">
-            <h1 className="pe-3 hidden md:block truncate max-w-[150px]">{currentUserDetails?.displayName}</h1>
+            <h1 className="pe-3 hidden md:block truncate max-w-[150px]">
+              {currentUserDetails?.displayName}
+            </h1>
+            <h1 className=" md:hidden lg:hidden xl:hidden  truncate max-w-[150px] bg-white text-[#0F172A] me-2 text-center px-2.5 py-0.5 rounded-full">
+              {currentUserDetails?.displayName.charAt(0) ||
+                currentUserDetails?.email.charAt(0)}
+            </h1>
             <button
               onClick={handleLogout}
               className="rounded-full text-white hover:text-red-400"
@@ -911,8 +1030,7 @@ const ChatRoom = () => {
             </button>
           </div>
         </div>
-  
-        
+
         <div className="flex-1 overflow-y-auto p-2 md:p-4 space-y-4 bg-[#0f172a] text-white">
           {messages.length === 0 ? (
             <div className="h-full flex flex-col items-center justify-center">
@@ -927,7 +1045,9 @@ const ChatRoom = () => {
               <p className="text-gray-600 pt-3 text-center px-4">
                 {selectedUser
                   ? `No messages yet. Say hello to ${
-                      selectedUser?.displayName || selectedUser?.email?.split("@")[0] || "them"
+                      selectedUser?.displayName ||
+                      selectedUser?.email?.split("@")[0] ||
+                      "them"
                     }!`
                   : "Select a user to begin chatting"}
               </p>
@@ -940,7 +1060,7 @@ const ChatRoom = () => {
                 const isCurrentUser = msg.uid === auth.currentUser?.uid;
                 const currentDocId = msg?.id;
                 const messageTime = msg.localTimeStamp;
-  
+
                 return (
                   <div
                     key={msg.id}
@@ -953,7 +1073,7 @@ const ChatRoom = () => {
                         {initial}
                       </div>
                     )}
-                    
+
                     <div
                       className={`relative max-w-[75%] md:max-w-[70%] rounded-lg py-2 px-3 shadow ${
                         isCurrentUser
@@ -966,7 +1086,7 @@ const ChatRoom = () => {
                           {senderName}
                         </div>
                       )}
-                      
+
                       {msg.isDeleted ? (
                         <p className="text-gray-400 italic text-sm">
                           {msg.text}
@@ -974,22 +1094,24 @@ const ChatRoom = () => {
                       ) : (
                         <>
                           <p className="text-white break-words">{msg.text}</p>
-                          
+
                           {msg.images && msg.images && (
                             <div className="mt-2 rounded-lg overflow-hidden">
+                              <a href={msg.images} download={`image_${Date.now()}.${msg.type}`}>
                               <img
                                 src={msg.images}
                                 alt="Sent image"
                                 className="max-w-full h-auto rounded-lg"
                               />
+                              </a>
                             </div>
                           )}
-                          
+
                           <div className="flex justify-between items-center mt-1">
                             <span className="text-xs text-gray-400">
                               {messageTime}
                             </span>
-                            
+
                             {isCurrentUser && !msg.isDeleted && (
                               <button
                                 onClick={() => deleteMessage(currentDocId)}
@@ -1002,11 +1124,13 @@ const ChatRoom = () => {
                           </div>
                         </>
                       )}
-                      
+
                       {/* Message tail */}
                       <div
                         className={`absolute top-0 w-4 h-4 overflow-hidden ${
-                          isCurrentUser ? "right-0 transform translate-x-1/2 -translate-y-1/2" : "left-0 transform -translate-x-1/2 -translate-y-1/2"
+                          isCurrentUser
+                            ? "right-0 transform translate-x-1/2 -translate-y-1/2"
+                            : "left-0 transform -translate-x-1/2 -translate-y-1/2"
                         }`}
                       >
                         {/* <div
@@ -1016,7 +1140,7 @@ const ChatRoom = () => {
                         ></div> */}
                       </div>
                     </div>
-                    
+
                     {isCurrentUser && (
                       <div className="w-8 h-8 md:w-10 md:h-10 rounded-full bg-blue-500 text-white font-bold flex items-center justify-center flex-shrink-0">
                         {initial}
@@ -1029,8 +1153,7 @@ const ChatRoom = () => {
             </div>
           )}
         </div>
-  
-        
+
         {selectedUser && (
           <div className="p-2 bg-[#1a2436] border-t border-gray-700">
             {imageFiles.length > 0 && (
@@ -1052,8 +1175,11 @@ const ChatRoom = () => {
                 ))}
               </div>
             )}
-            
-            <form onSubmit={sendMessage} className="flex items-center gap-2 fixed-bottom-form">
+
+            <form
+              onSubmit={sendMessage}
+              className="flex items-center gap-2 fixed-bottom-form"
+            >
               <div className="relative flex-1">
                 <input
                   type="text"
@@ -1065,11 +1191,10 @@ const ChatRoom = () => {
                   onTouchStart={(e) => {
                     e.stopPropagation();
                   }}
-                  onClick={(e) => e.stopPropagation()} 
-                  onFocus={(e) => e.stopPropagation()} 
-                  
+                  onClick={(e) => e.stopPropagation()}
+                  onFocus={(e) => e.stopPropagation()}
                 />
-             
+
                 <button
                   type="button"
                   onClick={() => setShowEmojiPicker(!showEmojiPicker)}
@@ -1077,27 +1202,26 @@ const ChatRoom = () => {
                 >
                   <FaSmile />
                 </button>
-                
+
                 {showEmojiPicker && (
-                  <div 
+                  <div
                     ref={emojiPickerRef}
                     className="absolute bottom-full right-0 mb-2 z-10 w-[250px] sm:w-[350px] md:[300px] md:ps-10 lg:[400px]  "
                   >
-                    <EmojiPicker onEmojiClick={handleEmojiClick}  />
+                    <EmojiPicker onEmojiClick={handleEmojiClick} />
                   </div>
                 )}
               </div>
-              
+
               <input
                 type="file"
                 accept="image/*"
                 onChange={handleImageChange}
                 className="hidden"
                 ref={imageInputRef}
-               
                 multiple
               />
-              
+
               <button
                 type="button"
                 onClick={triggerImageUpload}
@@ -1106,14 +1230,17 @@ const ChatRoom = () => {
               >
                 <FaImage />
               </button>
-              <button onClick={toggleListen}><FaMicrophone color={isListening?'green':'black'} />
+              <button onClick={toggleListen}>
+                <FaMicrophone color={isListening ? "green" : "gray"} />
               </button>
-              
+
               <button
                 type="submit"
-                
                 className="p-3 bg-blue-600 text-white rounded-full hover:bg-blue-700 disabled:opacity-50"
-                disabled={!selectedUser || (message.trim() === "" && imageFiles.length === 0)}
+                disabled={
+                  !selectedUser ||
+                  (message.trim() === "" && imageFiles.length === 0)
+                }
               >
                 <svg
                   xmlns="http://www.w3.org/2000/svg"
@@ -1133,4 +1260,3 @@ const ChatRoom = () => {
 };
 
 export default ChatRoom;
-
