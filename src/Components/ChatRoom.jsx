@@ -27,6 +27,7 @@ import {
   FaTimes,
   FaMicrophone,
 } from "react-icons/fa";
+import { MdDone, MdOutlineDoneAll } from "react-icons/md";
 import { Link, useNavigate } from "react-router-dom";
 import EmojiPicker from "emoji-picker-react";
 import { FilePond, registerPlugin } from "react-filepond";
@@ -615,7 +616,6 @@ if(messages.length>0){
     fetchUsers();
   }, []);
 
-  //delete message functionality
   const deleteMessage = async (id) => {
     try {
       const chatRef = doc(db, "privateChats", id);
@@ -627,7 +627,7 @@ if(messages.length>0){
       }
 
       const confirmDelete = window.confirm(
-        "Are you sure you want to delete this message?"
+        "Are you sure you want to delete this For Everyone?"
       );
 
       if (confirmDelete) {
@@ -687,6 +687,7 @@ if(messages.length>0){
   const currentUserDetails = users.find(
     (user) => user.email === auth?.currentUser?.email
   );
+  console.log(currentUserDetails)
 
   const getSenderDisplayName = (msg) => {
     const msgUser = users.find(
@@ -805,6 +806,12 @@ if(messages.length>0){
       recognization.stop();
     }
   }, [isListening, recognization]);
+
+  console.log(messages)
+// Step 1: Get last received message (from other user)
+const lastReplyTime = messages
+  .filter(msg => msg.uid !== currentUserDetails.uid)
+  .at(-1)?.timestamp;
 
   return (
     <div className="flex h-screen bg-[#131c2e] overflow-hidden">
@@ -1110,12 +1117,13 @@ if(messages.length>0){
 
                       {msg.isDeleted ? (
                         <p className="text-gray-400 italic text-sm">
-                          {msg.text}
+                          {msg.text} 
+                          
                         </p>
                       ) : (
                         <>
-                          <p className="text-white break-words">{msg.text}</p>
-
+                          <p className="text-white break-words flex justify-between items-center"><span>{msg.text}</span> <span>{isCurrentUser ? (<h1>{msg.uid==currentUserDetails.uid ? (<MdOutlineDoneAll className={`ms-2 ${lastReplyTime && msg.timestamp < lastReplyTime?'text-blue-500':'text-gray-500'}`} />
+):(<h1 className="text-red-700">Retry !</h1>)}</h1>):("")}</span></p> 
                           {msg.images && msg.images && (
                             <div className="mt-2 rounded-lg overflow-hidden">
                               <Link to={msg.images} download={`image_${Date.now()}.${msg.type}`}>
