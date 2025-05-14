@@ -47,7 +47,7 @@ const ChatRoom = () => {
   const [selectedUser, setSelectedUser] = useState(null);
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
   const [recentContacts, setRecentContacts] = useState([]);
-  const [viewMode, setViewMode] = useState("recent");
+  const [viewMode, setViewMode] = useState("all");
   const messagesEndRef = useRef(null);
   const navigate = useNavigate();
   const privateChatCollectionName = "privateChats";
@@ -643,6 +643,7 @@ const ChatRoom = () => {
     const confirmLogout = window.confirm("Are you sure you want to logout?");
     if (confirmLogout) {
       auth.signOut();
+      localStorage.removeItem("lastSelectedUser")
       navigate("/");
     }
   };
@@ -658,6 +659,7 @@ const ChatRoom = () => {
     };
 
     setSelectedUser(selectedUserWithUid);
+    localStorage.setItem("lastSelectedUser",JSON.stringify(user))
     setSearchQuery("");
     setShowSearchInput(false);
 
@@ -665,6 +667,13 @@ const ChatRoom = () => {
       setSidebarOpen(false);
     }
   };
+
+  useEffect(()=>{
+    const storedUser=localStorage.getItem("lastSelectedUser")
+    if(storedUser){
+      setSelectedUser(JSON.parse(storedUser))
+    }
+  },[])
 
   const toggleSidebar = () => {
     setSidebarOpen(!sidebarOpen);
@@ -788,7 +797,7 @@ const ChatRoom = () => {
     if (recognization && isListening) {
       recognization.start();
     } else if (recognization && !isListening) {
-      recentContacts.stop();
+      recognization.stop();
     }
   }, [isListening, recognization]);
 
