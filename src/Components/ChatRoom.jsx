@@ -27,7 +27,7 @@ import {
   FaTimes,
   FaMicrophone,
 } from "react-icons/fa";
-import { useNavigate } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import EmojiPicker from "emoji-picker-react";
 import { FilePond, registerPlugin } from "react-filepond";
 import "filepond/dist/filepond.min.css";
@@ -85,6 +85,12 @@ const ChatRoom = () => {
       setSidebarOpen(true);
     }
   };
+
+  useEffect(()=>{
+if(messages.length>0){
+    setViewMode("recent")
+  }
+  },[message])
 
   useEffect(() => {
     if (window.innerWidth < 768 && selectedUser) {
@@ -445,7 +451,6 @@ const ChatRoom = () => {
     });
   };
 
-  // messages fetch through snapshot and query function condition
   useEffect(() => {
     if (!auth.currentUser || !selectedUser || !selectedUser.uid) return;
 
@@ -643,7 +648,7 @@ const ChatRoom = () => {
     const confirmLogout = window.confirm("Are you sure you want to logout?");
     if (confirmLogout) {
       auth.signOut();
-      localStorage.removeItem("lastSelectedUser")
+      // localStorage.removeItem("lastSelectedUser")
       navigate("/");
     }
   };
@@ -659,7 +664,7 @@ const ChatRoom = () => {
     };
 
     setSelectedUser(selectedUserWithUid);
-    localStorage.setItem("lastSelectedUser",JSON.stringify(user))
+    // localStorage.setItem("lastSelectedUser",JSON.stringify(user))
     setSearchQuery("");
     setShowSearchInput(false);
 
@@ -668,12 +673,12 @@ const ChatRoom = () => {
     }
   };
 
-  useEffect(()=>{
-    const storedUser=localStorage.getItem("lastSelectedUser")
-    if(storedUser){
-      setSelectedUser(JSON.parse(storedUser))
-    }
-  },[])
+  // useEffect(()=>{
+  //   const storedUser=localStorage.getItem("lastSelectedUser")
+  //   if(storedUser){
+  //     setSelectedUser(JSON.parse(storedUser))
+  //   }
+  // },[])
 
   const toggleSidebar = () => {
     setSidebarOpen(!sidebarOpen);
@@ -1113,13 +1118,13 @@ const ChatRoom = () => {
 
                           {msg.images && msg.images && (
                             <div className="mt-2 rounded-lg overflow-hidden">
-                              <a href={msg.images} download={`image_${Date.now()}.${msg.type}`}>
+                              <Link to={msg.images} download={`image_${Date.now()}.${msg.type}`}>
                               <img
                                 src={msg.images}
                                 alt="Sent image"
                                 className="max-w-full h-auto rounded-lg"
                               />
-                              </a>
+                              </Link>
                             </div>
                           )}
 
