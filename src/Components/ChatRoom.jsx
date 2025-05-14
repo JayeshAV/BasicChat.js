@@ -65,7 +65,7 @@ const ChatRoom = () => {
   const handleEmojiClick = (emojiData) => {
     setMessage((prev) => prev + emojiData.emoji);
     inputRef.current?.focus();
-    setShowEmojiPicker(false);
+    // setShowEmojiPicker(false);
   };
 
   useEffect(() => {
@@ -118,7 +118,14 @@ const ChatRoom = () => {
     const newFiles = Array.from(e.target.files).filter((file) =>
       file.type.startsWith("image/")
     );
-    setImageFiles((prevFiles) => [...prevFiles, ...newFiles]);
+
+    if(newFiles.length>=10){
+      return  toast.error("maximum 10 images allowed to send")
+    }else{
+      setImageFiles((prevFiles) => [...prevFiles, ...newFiles]);
+    }
+
+    
 
     // const compressBlobs = [];
 
@@ -1163,13 +1170,13 @@ const ChatRoom = () => {
                     <img
                       src={URL.createObjectURL(file)}
                       alt={`Preview ${index}`}
-                      className="h-16 w-16 object-cover rounded-md"
+                      className="h-30 w-30 object-cover rounded-md"
                     />
                     <button
                       onClick={() => handleCancel(index)}
                       className="absolute -top-2 -right-2 bg-red-500 rounded-full p-1 text-white"
                     >
-                      <FaTimes size={10} />
+                      <FaTimes size={15} />
                     </button>
                   </div>
                 ))}
@@ -1219,6 +1226,7 @@ const ChatRoom = () => {
                 onChange={handleImageChange}
                 className="hidden"
                 ref={imageInputRef}
+                // maxLength={10}
                 multiple
               />
 
