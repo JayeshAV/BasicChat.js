@@ -27,6 +27,8 @@ import {
   FaTimes,
   FaMicrophone,
 } from "react-icons/fa";
+import { BsCloudDownloadFill } from "react-icons/bs";
+import { MdOutlineCancel } from "react-icons/md";
 import { MdDone, MdOutlineDoneAll } from "react-icons/md";
 import { Link, useNavigate } from "react-router-dom";
 import EmojiPicker from "emoji-picker-react";
@@ -62,6 +64,7 @@ const ChatRoom = () => {
   const emojiPickerRef = useRef(null);
   const [isListening, setIsListening] = useState(false);
   const [recognization, setRecognization] = useState(null);
+  const [selectedImages,setSelectedImages]=useState(null)
 
   const handleEmojiClick = (emojiData) => {
     setMessage((prev) => prev + emojiData.emoji);
@@ -807,13 +810,14 @@ if(messages.length>0){
     }
   }, [isListening, recognization]);
 
-  console.log(messages)
-// Step 1: Get last received message (from other user)
-const lastReplyTime = messages
+   const lastReplyTime = messages
   .filter(msg => msg.uid !== currentUserDetails.uid)
   .at(-1)?.createdAt.toMillis();
 
-  console.log(lastReplyTime)
+
+
+
+
   return (
     <div className="flex h-screen bg-[#131c2e] overflow-hidden">
       {windowWidth < 768 && selectedUser && (
@@ -1123,17 +1127,35 @@ const lastReplyTime = messages
                         </p>
                       ) : (
                         <>
-                          <p className="text-white break-words flex justify-between items-center"><span>{msg.text}</span> <span>{isCurrentUser ? (<h1>{msg.uid==currentUserDetails.uid ? (<MdOutlineDoneAll className={`ms-2 ${lastReplyTime && msg.createdAt?.toMillis() < lastReplyTime?'text-blue-500':'text-gray-500'}`} />
-):(<h1 className="text-red-700">Retry !</h1>)}</h1>):("")}</span></p> 
+                        <div className="flex justify-between py-1">
+                        {msg.images &&  <Link
+                              to={msg.images}
+                              download={`image_${Date.now()}.${msg.type}`}
+                              className=" underline  ms-1 text-center  inline-block hover:text-blue-200"
+                            >
+                              <BsCloudDownloadFill size={20} />
+
+                            </Link>}  <p className="text-white break-words flex justify-between items-center"><span>{msg.text}</span> <span>{isCurrentUser ? (<h1>{msg.uid==currentUserDetails.uid ? (<MdOutlineDoneAll className={`ms-2 ${lastReplyTime && msg.createdAt?.toMillis() < lastReplyTime?'text-blue-500':'text-gray-500'}`} />
+                             ):(<h1 className="text-red-700">Retry !</h1>)}</h1>):("")}</span></p> </div>
+                         
                           {msg.images && msg.images && (
                             <div className="mt-2 rounded-lg overflow-hidden">
-                              <Link to={msg.images} download={`image_${Date.now()}.${msg.type}`}>
+                              
+                              
                               <img
                                 src={msg.images}
                                 alt="Sent image"
                                 className="max-w-full h-auto rounded-lg"
-                              />
-                              </Link>
+                                onClick={()=>setSelectedImages(msg.images)}
+                              /> 
+                            
+                            </div>
+                          )}
+
+                          {selectedImages && (
+                            <div className="fixed inset-0 bg-opacity-70 flex items-center justify-center bg-black z-50" onClick={()=>setSelectedImages(false)}>
+                                            <div className="flex-col"><MdOutlineCancel size={30} onClick={()=>setSelectedImages(false)} className="ms-auto mb-10" />
+                                     <img src={selectedImages} alt="Preview" className="max-x-full max-h-full rounded-lg border" /> </div>
                             </div>
                           )}
 
