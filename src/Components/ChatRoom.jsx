@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from "react";
+import React, { useContext, useEffect, useRef, useState } from "react";
 import { db, auth } from "../firebase.js";
 import {
   collection,
@@ -27,6 +27,8 @@ import {
   FaTimes,
   FaMicrophone,
 } from "react-icons/fa";
+import { MdDarkMode } from "react-icons/md";
+import { CiLight } from "react-icons/ci";
 import { BsCloudDownloadFill } from "react-icons/bs";
 import { MdOutlineCancel } from "react-icons/md";
 import { MdDone, MdOutlineDoneAll } from "react-icons/md";
@@ -37,6 +39,8 @@ import "filepond/dist/filepond.min.css";
 import FilePondPluginFileValidateType from "filepond-plugin-file-validate-type";
 import FilePondPluginFileValidateSize from "filepond-plugin-file-validate-size";
 import { toast } from "react-toastify";
+import { ThemeContext } from "./ThemeContext.jsx";
+import { color } from "framer-motion";
 // import GetAiResponse from "./GetAiResponse.js";
 
 registerPlugin(FilePondPluginFileValidateType, FilePondPluginFileValidateSize);
@@ -65,6 +69,9 @@ const ChatRoom = () => {
   const [isListening, setIsListening] = useState(false);
   const [recognization, setRecognization] = useState(null);
   const [selectedImages,setSelectedImages]=useState(null)
+   
+  const { theme, toggletheme } = useContext(ThemeContext);
+
 
   const handleEmojiClick = (emojiData) => {
     setMessage((prev) => prev + emojiData.emoji);
@@ -815,9 +822,6 @@ if(messages.length>0){
   .at(-1)?.createdAt.toMillis();
 
 
-
-
-
   return (
     <div className="flex h-screen bg-[#131c2e] overflow-hidden">
       {windowWidth < 768 && selectedUser && (
@@ -838,11 +842,14 @@ if(messages.length>0){
         } w-full md:w-80 bg-[#1A2436] border-r border-gray-700 flex-shrink-0 
         md:static fixed top-0 left-0 h-full z-20 transition-all duration-300 ease-in-out`}
       >
-        <div className="bg-[#1a2436] p-4 shadow-md flex items-center justify-between sticky top-0 z-10">
-          <h2 className="text-xl text-white font-bold text-center md:m-0 lg:m-0 xl-m-0 m-auto">
+        <div className={` p-4 ${theme==="light"?"bg-[#1a2436]":"bg-white text-blue-900"} shadow-md flex items-center justify-between sticky top-0 z-10`}>
+          <h2 className={`text-xl  font-bold text-center md:m-0 lg:m-0 xl-m-0 m-auto ${theme==="light"?"bg-[#1a2436] text-white":"bg-white text-blue-900"}`}>
             BaatChit
           </h2>
           <div className="flex gap-2">
+            <button className="p-2 rounded-lg bg-gray-700" onClick={toggletheme}>
+                 {theme==="light"?<MdDarkMode className="text-white" size={18} />:<CiLight className="text-white" size={18} />                 }
+            </button>
             <button
               className={`p-2 rounded-lg ${
                 viewMode === "recent" ? "bg-blue-600" : "bg-gray-700"
@@ -887,7 +894,7 @@ if(messages.length>0){
           </div>
         )}
 
-        <div className="pt-2 h-[calc(100%-60px)] overflow-y-auto">
+        <div className={`pt-2 ${theme==="light"?"bg-[#1a2436]":"bg-white text-blue-900"} h-[calc(100%-60px)] overflow-y-auto`}>
           {searchQuery &&
             filterUsers
               .filter((user) => user.uid !== auth.currentUser?.uid)
@@ -1008,15 +1015,18 @@ if(messages.length>0){
           !sidebarOpen || windowWidth >= 768
             ? "flex-1"
             : "hidden md:block md:flex-1"
-        } flex flex-col bg-[#131c2e] text-white`}
+        } flex flex-col ${theme==="light"?"bg-[#0F172A]":"bg-[#000] text-white "} shadow-md `}
         onClick={(e) => e.stopPropagation()}
-        onTouchStart={(e) => e.stopPropagation()}
+        onTouchStart={(e) => e.stopPropagation()}      
+        
       >
         {/* Chat header */}
         <div
-          className="bg-[#1a2436] p-3 md:p-5 shadow-md flex items-center justify-between"
+          className={` ${theme==="light"?"bg-[#1A2436] text-white":"bg-white text-gray-800 border-b-2 border-[#E7E7E7] shadow-2xl shadow-blue-500/20"} shadow-md  p-3 md:p-5 shadow-md flex items-center justify-between`}
           onClick={(e) => e.stopPropagation()}
           onTouchStart={(e) => e.stopPropagation()}
+
+          st
         >
           <div className="flex items-center flex-1">
             {windowWidth < 768 && selectedUser && (
@@ -1057,14 +1067,14 @@ if(messages.length>0){
             </h1>
             <button
               onClick={handleLogout}
-              className="rounded-full text-white hover:text-red-400"
+              className=" rounded-full hover:text-red-400"
             >
-              <FaSignOutAlt className="h-5 w-5" />
+              <FaSignOutAlt className={`h-5 w-5 ${theme==="light"?"text-white":"text-black"}`} />
             </button>
           </div>
         </div>
 
-        <div className="flex-1 overflow-y-auto p-2 md:p-4 space-y-4 bg-[#0f172a] text-white">
+        <div className={`flex-1 overflow-y-auto p-2 md:p-4 space-y-4 ${theme==="light"?"":"bg-white"} `}>
           {messages.length === 0 ? (
             <div className="h-full flex flex-col items-center justify-center">
               <div className="relative w-16 h-16 md:w-24 md:h-24 rounded-full flex items-center justify-center shadow-inner opacity-100 bg-gradient-to-br from-blue-100 to-blue-600 shadow-md">
@@ -1205,11 +1215,11 @@ if(messages.length>0){
             </div>
           )}
         </div>
-
+        {/* bg-[#1a2436] */}
         {selectedUser && (
-          <div className="p-2 bg-[#1a2436] border-t border-gray-700">
+          <div className={`p-2 ${theme==="light"?"bg-[#1a2436]":"bg-white border-white"} border-t border-gray-700`}>
             {imageFiles.length > 0 && (
-              <div className="flex flex-wrap gap-2 mb-2 p-2 bg-gray-800 rounded-lg">
+              <div className={`flex flex-wrap gap-2 mb-2 p-2 ${theme==="light"?"bg-gray-800":"bg-white border-white"}  rounded-lg`}>
                 {imageFiles.map((file, index) => (
                   <div key={index} className="relative inline-block">
                     <img
